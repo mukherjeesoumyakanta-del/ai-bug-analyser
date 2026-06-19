@@ -1,0 +1,342 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────────
+   Design System — Dark Glassmorphic Theme
+   ────────────────────────────────────────────── */
+
+:root {
+  --bg-primary: #06060e;
+  --bg-secondary: #0d0f1a;
+  --bg-surface: rgba(15, 18, 35, 0.65);
+  --bg-surface-hover: rgba(20, 24, 48, 0.75);
+
+  --border-glass: rgba(255, 255, 255, 0.06);
+  --border-glow: rgba(129, 100, 255, 0.2);
+
+  --text-primary: #e8e6f0;
+  --text-secondary: #8b8a9e;
+  --text-muted: #55546a;
+
+  --accent-start: #7c5cfc;
+  --accent-mid: #a855f7;
+  --accent-end: #6366f1;
+
+  --glow-accent: rgba(124, 92, 252, 0.35);
+  --glow-soft: rgba(124, 92, 252, 0.1);
+
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+
+  --font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --font-code: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+}
+
+@theme inline {
+  --color-background: var(--bg-primary);
+  --color-foreground: var(--text-primary);
+  --color-surface: var(--bg-surface);
+  --color-surface-hover: var(--bg-surface-hover);
+  --color-border-glass: var(--border-glass);
+  --color-border-glow: var(--border-glow);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted: var(--text-muted);
+  --color-accent-start: var(--accent-start);
+  --color-accent-mid: var(--accent-mid);
+  --color-accent-end: var(--accent-end);
+  --color-glow-accent: var(--glow-accent);
+  --color-glow-soft: var(--glow-soft);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+}
+
+/* ── Global Resets ─────────────────────────── */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: linear-gradient(165deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0a0c1a 100%);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  overflow: hidden;
+}
+
+/* ── Custom Scrollbar ──────────────────────── */
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(124, 92, 252, 0.25);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 92, 252, 0.45);
+}
+
+/* Firefox */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 92, 252, 0.25) transparent;
+}
+
+/* ── Glass Panel ───────────────────────────── */
+
+.glass-panel {
+  background: var(--bg-surface);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--border-glass);
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.glass-panel-glow {
+  position: relative;
+}
+
+.glass-panel-glow::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 17px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 92, 252, 0.15) 0%,
+    transparent 50%,
+    rgba(99, 102, 241, 0.1) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Gradient Button ───────────────────────── */
+
+.btn-gradient {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px 32px;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-mid) 50%, var(--accent-end) 100%);
+  background-size: 200% 200%;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.btn-gradient::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-start), var(--accent-mid), var(--accent-end));
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 0 20px var(--glow-accent),
+    0 8px 24px rgba(124, 92, 252, 0.25);
+  background-position: 100% 100%;
+}
+
+.btn-gradient:hover::before {
+  opacity: 1;
+}
+
+.btn-gradient:active {
+  transform: translateY(0);
+}
+
+.btn-gradient:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-gradient span {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Status Indicators ─────────────────────── */
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-dot--idle {
+  background: var(--text-muted);
+}
+
+.status-dot--analyzing {
+  background: var(--warning);
+  animation: pulse-status 1.5s ease-in-out infinite;
+}
+
+.status-dot--complete {
+  background: var(--success);
+}
+
+.status-dot--error {
+  background: var(--error);
+  animation: pulse-status 1.5s ease-in-out infinite;
+}
+
+/* ── Streaming Cursor ──────────────────────── */
+
+.streaming-cursor::after {
+  content: "▌";
+  color: var(--accent-start);
+  animation: blink-cursor 0.8s step-end infinite;
+  margin-left: 2px;
+}
+
+/* ── Keyframe Animations ───────────────────── */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 12px var(--glow-soft);
+  }
+  50% {
+    box-shadow: 0 0 24px var(--glow-accent);
+  }
+}
+
+@keyframes pulse-status {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes blink-cursor {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── Animation Utility Classes ─────────────── */
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-out both;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.5s ease-out both;
+}
+
+.animate-slide-up-delay-1 {
+  animation: slide-up 0.5s ease-out 0.1s both;
+}
+
+.animate-slide-up-delay-2 {
+  animation: slide-up 0.5s ease-out 0.2s both;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* ── Spinner ───────────────────────────────── */
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spinner 0.65s linear infinite;
+}
+
+/* ── Monaco Override ───────────────────────── */
+
+.monaco-container .monaco-editor {
+  border-radius: 0 0 16px 16px;
+}
+
+.monaco-container .overflow-guard {
+  border-radius: 0 0 16px 16px;
+}
