@@ -5,7 +5,9 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { LiveblocksProvider, RoomProvider, useErrorListener, useOthers, useStatus } from "@liveblocks/react";
 import { realtimeRoom } from "@/lib/room-id";
+import Whiteboard from "./Whiteboard";
 
+const VoiceControls = dynamic(() => import("./VoiceControls"), { ssr: false });
 const SharedEditor = dynamic(() => import("./SharedEditor"), { ssr: false, loading: () => <p className="p-4">Loading Monaco…</p> });
 
 type WorkspaceProps = {
@@ -26,6 +28,7 @@ export default function RoomWorkspace(props: WorkspaceProps) {
 function Workspace({ id, userId, ownerId, participants, inviteCode, children }: WorkspaceProps) {
   const status = useStatus();
   const others = useOthers();
+  const [panel, setPanel] = useState<"code" | "board">("code");
   const [copyMessage, setCopyMessage] = useState("");
   const [providerError, setProviderError] = useState(false);
   useErrorListener(() => setProviderError(true));
@@ -54,8 +57,17 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
       {providerError && status !== "connected" && <p role="alert" className="rounded-lg bg-red-950/60 p-3 text-sm text-red-200">Live editing could not connect. Check the server setup or reload to retry.</p>}
       <div className="grid flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section className="glass-panel flex min-h-[420px] flex-col overflow-hidden">
-          <h2 className="border-b border-white/10 p-3 text-sm font-medium">Shared editor · main.cpp</h2>
-          <div className="min-h-[360px] flex-1"><SharedEditor /></div>
+          <nav aria-label="Room workspace" className="flex gap-2 border-b border-white/10 p-2 text-sm">
+            <button type="button" aria-pressed={panel === "code"} onClick={() => setPanel("code")}
+              className="rounded px-3 py-2 hover:bg-white/10 aria-pressed:bg-violet-900/70">Shared code</button>
+            <button type="button" aria-pressed={panel === "board"} onClick={() => setPanel("board")}
+              className="rounded px-3 py-2 hover:bg-white/10 aria-pressed:bg-violet-900/70">Whiteboard</button>
+          </nav>
+          <div hidden={panel !== "code"} className="min-h-[380px] flex-1">
+            <h2 className="border-b border-white/10 px-3 py-2 text-sm font-medium">Shared editor · main.cpp</h2>
+            <div className="h-[clamp(360px,65vh,820px)]"><SharedEditor /></div>
+          </div>
+          <section hidden={panel !== "board"}><Whiteboard /></section>
         </section>
         <aside className="glass-panel space-y-4 p-4">
           <h2 className="font-semibold">Participants · {participants.length}/2</h2>
@@ -72,6 +84,7 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
             })}
           </ul>
           {inviteCode && <div className="text-xs text-slate-400"><p role="status">{copyMessage}</p><p className="mt-1 break-all">Room code {inviteCode}</p></div>}
+          <VoiceControls roomId={id} />
           {children}
         </aside>
       </div>

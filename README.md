@@ -45,6 +45,12 @@ Sign in and open **Debug Together**. Create a room and share the invite link or 
 
 The server provisions a private Liveblocks room and gives authenticated PostgreSQL members an access token scoped to that exact room. The existing Monaco editor binds to a Yjs shared document when Liveblocks finishes synchronizing. PostgreSQL stores room metadata and requests. Liveblocks stores collaborative text and handles cursor presence.
 
+The **Whiteboard** uses the same Liveblocks Yjs document as the editor. The app previews the current stroke locally and syncs it on pointer release. Strokes store normalized coordinates, so resizing preserves placement. The eraser is a shared stroke that removes pixels where it passes. **Clear board** asks for confirmation and clears committed strokes for both participants. A stroke still in progress on the other device can appear after a clear. The board supports up to 500 strokes, with up to 512 sampled points per stroke.
+
+For **Voice**, set `LIVEKIT_URL` to your LiveKit project's WebSocket URL and set `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` on the server. For an official local LiveKit server, a loopback WebSocket URL is allowed. Use HTTPS for the app outside localhost so browsers can grant microphone access. In a room, click **Join voice**, then allow microphone access. If permission is denied, you can still listen. If the browser blocks automatic playback, click **Play audio**. Leaving voice or the room releases the microphone. LiveKit permits one voice connection per account in a room, so joining voice from another tab can replace the first connection.
+
+The token endpoint matches the room owner or admitted participant in PostgreSQL and issues a five-minute token for that exact LiveKit room under the account's ID. The token permits audio subscription and microphone publication. The LiveKit room configuration also caps the session at two connections.
+
 The Analytics code filter uses the exact saved C++ source and excludes the clean-code marker from bug counts.
 
 ## Verification
