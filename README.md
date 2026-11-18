@@ -37,6 +37,16 @@ The comparison uses JDoodle's full returned output before shortening the display
 
 The [Free API plan](https://www.jdoodle.com/docs/api/credits) has 20 daily credits. A click runs one case and can use one credit, including a compile or runtime failure. Four custom cases, 32 KiB of source, 8 KiB per input or expectation, and 4,096 displayed output characters are allowed. The server allows one in-flight run per user per process, with at least five seconds between starts. JDoodle enforces its daily quota and sandbox limits. A 25-second wait limit on this app's provider request can expire before the provider returns. A provider timeout and a program timeout are shown separately.
 
+## Collaborative debugging rooms
+
+Set `LIVEBLOCKS_SECRET_KEY` to a secret key from your Liveblocks project. Keep it in the server environment. Run `npx drizzle-kit migrate` after configuring PostgreSQL to add the room and admission tables.
+
+Sign in and open **Debug Together**. Create a room and share the invite link or code. The second account requests access, then the owner presses **Admit**. The room has a single participant slot beside the owner. Multiple tabs signed in as the same account count once. Exit returns to the landing page and preserves editor state for the next visit.
+
+The server provisions a private Liveblocks room and gives authenticated PostgreSQL members an access token scoped to that exact room. The existing Monaco editor binds to a Yjs shared document when Liveblocks finishes synchronizing. PostgreSQL stores room metadata and requests. Liveblocks stores collaborative text and handles cursor presence.
+
+The Analytics code filter uses the exact saved C++ source and excludes the clean-code marker from bug counts.
+
 ## Verification
 
 ```bash

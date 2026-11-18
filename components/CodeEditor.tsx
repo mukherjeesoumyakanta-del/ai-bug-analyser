@@ -1,13 +1,15 @@
 "use client";
 
-import Editor from "@monaco-editor/react";
+import Editor, { type OnMount } from "@monaco-editor/react";
 
 interface CodeEditorProps {
-  value: string;
-  onChange: (value: string) => void;
+  value?: string;
+  onChange?: (value: string) => void;
+  onMount?: OnMount;
+  readOnly?: boolean;
 }
 
-export default function CodeEditor({ value, onChange }: CodeEditorProps) {
+export default function CodeEditor({ value, onChange, onMount, readOnly = false }: CodeEditorProps) {
   return (
     <div className="monaco-container h-full w-full">
       <Editor
@@ -16,7 +18,8 @@ export default function CodeEditor({ value, onChange }: CodeEditorProps) {
         language="cpp"
         theme="vs-dark"
         value={value}
-        onChange={(val) => onChange(val ?? "")}
+        onChange={onChange ? (val) => onChange(val ?? "") : undefined}
+        onMount={onMount}
         loading={
           <div className="flex items-center justify-center h-full w-full">
             <div className="flex flex-col items-center gap-3">
@@ -31,6 +34,7 @@ export default function CodeEditor({ value, onChange }: CodeEditorProps) {
           </div>
         }
         options={{
+          readOnly,
           fontSize: 14,
           fontFamily: "var(--font-code)",
           fontLigatures: true,

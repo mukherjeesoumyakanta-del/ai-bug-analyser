@@ -202,6 +202,9 @@ body {
   z-index: 1;
 }
 
+.yRemoteSelection { background-color: rgb(129 140 248 / 0.3); }
+.yRemoteSelectionHead { border-left: 2px solid #c4b5fd; position: absolute; height: 100%; }
+
 /* ── Status Indicators ─────────────────────── */
 
 .status-dot {

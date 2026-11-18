@@ -13,6 +13,9 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get("registered");
+  const requestedPath = searchParams.get("callbackUrl");
+  const callbackUrl = requestedPath?.startsWith("/") && !requestedPath.startsWith("//") && !requestedPath.includes("\\")
+    ? requestedPath : "/";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,7 +32,7 @@ function LoginForm() {
       if (res?.error) {
         setError("Invalid email or password");
       } else {
-        router.push("/");
+        router.push(callbackUrl);
         router.refresh(); // Refresh to update session globally
       }
     } catch {
@@ -86,7 +89,7 @@ function LoginForm() {
           disabled={loading}
           className="btn-gradient w-full mt-2 justify-center"
         >
-          {loading ? <div className="spinner" /> : "Sign In"}
+          {loading ? <div className="spinner" /> : <span>Sign In</span>}
         </button>
       </form>
 

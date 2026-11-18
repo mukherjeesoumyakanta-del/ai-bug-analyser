@@ -52,7 +52,10 @@ export default function Navbar() {
         </Link>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Link href="/collaborate" className="text-xs font-medium text-violet-300 hover:text-white">
+          Debug Together
+        </Link>
         {status === "loading" ? (
           <div className="w-20 h-8 rounded animate-pulse" style={{ background: "var(--glow-soft)" }} />
         ) : session?.user ? (
@@ -74,7 +77,7 @@ export default function Navbar() {
                 Analytics 📊
               </Link>
             )}
-            <span className="text-xs text-white/50">{session.user.email}</span>
+            <span className="hidden text-xs text-white/50 lg:inline">{session.user.email}</span>
             <button
               onClick={() => signOut({ callbackUrl: "/" })}
               className="text-xs px-3 py-1.5 rounded border hover:bg-white/10 transition-colors"

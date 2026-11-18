@@ -65,6 +65,7 @@ export default function Home() {
   const [showTestCases, setShowTestCases] = useState(false);
   const [displayedText, setDisplayedText] = useState("");
   const [status, setStatus] = useState<AnalysisStatus>("idle");
+  const [analysisSnapshot, setAnalysisSnapshot] = useState<string>();
   const abortRef = useRef<AbortController | null>(null);
   const runningRef = useRef(false);
   const [running, setRunning] = useState(false);
@@ -131,6 +132,7 @@ export default function Home() {
     abortRef.current = controller;
 
     setDisplayedText("");
+    setAnalysisSnapshot(snapshot);
     setStatus("analyzing");
 
     try {
@@ -325,8 +327,9 @@ export default function Home() {
           style={{ minWidth: 0 }}
         >
           <OutputPanel
-            displayedText={displayedText}
-            status={status}
+            displayedText={analysisSnapshot && analysisSnapshot !== snapshot
+              ? "Code or tests changed. Analyze again for a review of this version." : displayedText}
+            status={analysisSnapshot !== snapshot && status !== "analyzing" ? "idle" : status}
             onAnalyze={handleAnalyze}
             onRun={handleRun}
             running={running}

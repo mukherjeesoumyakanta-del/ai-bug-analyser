@@ -8,6 +8,13 @@
       "when": 1781899808829,
       "tag": "0000_violet_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795024653733,
+      "tag": "0001_debugging_rooms",
+      "breakpoints": true
     }
   ]
 }

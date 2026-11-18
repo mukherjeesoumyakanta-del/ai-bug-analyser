@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, primaryKey, serial, integer, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, primaryKey, serial, integer, uuid, pgEnum } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
 export const users = pgTable("user", {
@@ -62,3 +62,20 @@ export const bugReports = pgTable("bug_reports", {
   severity: text("severity").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
 });
+
+export const debugRoomStatus = pgEnum("debug_room_status", ["active", "closed"]);
+
+export const debugRooms = pgTable("debug_rooms", {
+  id: uuid("id").primaryKey(),
+  inviteCode: uuid("invite_code").notNull().unique(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  participantId: uuid("participant_id").references(() => users.id, { onDelete: "set null" }),
+  status: debugRoomStatus("status").default("active").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const roomRequests = pgTable("room_requests", {
+  roomId: uuid("room_id").notNull().references(() => debugRooms.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (request) => [primaryKey({ columns: [request.roomId, request.userId] })]);
