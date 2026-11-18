@@ -1,92 +1,126 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { runCode, compareOutput, normalizeExecution } from "../lib/code-execution.ts";
 import { executeRequest } from "../lib/execute-request.ts";
 import { verifyEvidence } from "../lib/execution-evidence.ts";
-import { compareOutput, createJudge0, normalizeResult } from "../lib/judge0.ts";
-import { MAX_OUTPUT } from "../lib/execution-types.ts";
+import { MAX_OUTPUT, type TestCase } from "../lib/execution-types.ts";
 
-const base = "https://judge.example/api";
-const secret = "local-test-secret";
+const secret = "local-signing-secret";
+const credentials = { JDOODLE_CLIENT_ID: "test-client", JDOODLE_CLIENT_SECRET: "test-secret" };
 const code = "int main() {}";
-const encode = (text: string) => Buffer.from(text).toString("base64");
+const signal = new AbortController().signal;
+const emptyTest = { input: "", expectedOutput: null };
+const success = { statusCode: 200, isCompiled: true, isExecutionSuccess: true, cpuTime: "0.01", memory: "3308" };
 const request = (body: unknown) => new Request("https://app.example/api/execute", {
   method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
 });
 
-test("output comparison preserves spaces and final newline, and accepts CRLF", () => {
-  assert.equal(compareOutput("hi\r\n", "hi\n"), true);
-  assert.equal(compareOutput("hi\n", "hi"), false);
-  assert.equal(compareOutput(" hi", "hi"), false);
+test("compares the returned output exactly apart from CRLF", () => {
+  assert.equal(compareOutput("a\r\nb", "a\nb"), true);
+  assert.equal(compareOutput("42", "42\n"), false);
+  assert.equal(compareOutput(" 42", "42"), false);
   assert.equal(compareOutput("", ""), true);
 });
 
-test("normalizes actual statuses, empty output, metrics, and truncated display", () => {
-  const outcome = (id: number) => normalizeResult({ status: { id } }, "");
-  assert.equal(outcome(5).status, "timeout");
-  assert.equal(outcome(6).status, "compile_error");
-  assert.equal(outcome(11).status, "runtime_error");
-  assert.equal(outcome(13).status, "provider_error");
-  assert.equal(outcome(3).verdict, "passed");
-  assert.equal(outcome(3).stdout, "");
-  assert.equal(normalizeResult({ status: { id: 3 } }, null).verdict, "not_checked");
+test("normalizes compile errors, runtime failures and JDoodle timeout despite request status 200", () => {
+  const timeout = "\n\n JDoodle - Timeout \nIf your program reads input, please enter the inputs.";
+  const fixtures = [
+    { status: "compile_error", output: "jdoodle.cpp:1: error: undefined", isCompiled: false },
+    { status: "runtime_error", output: "Command exited with non-zero status 7", isCompiled: true },
+    { status: "timeout", output: timeout, isCompiled: false },
+  ];
+  for (const { status, ...fields } of fixtures) {
+    const result = normalizeExecution({ statusCode: 200, isExecutionSuccess: false, ...fields }, fields.output);
+    assert.equal(result.status, status);
+    assert.equal(result.output, fields.output);
+    assert.equal(result.verdict, "failed");
+  }
+  const unknown = normalizeExecution({ statusCode: 200, output: "42" }, "42");
+  assert.equal(unknown.status, "unknown");
+  assert.equal(unknown.verdict, "not_checked");
+});
+
+test("accepts empty stdout and compares full output before shortening the preview", () => {
+  const empty = normalizeExecution({ ...success, output: "" }, "");
+  assert.equal(empty.verdict, "passed");
+  assert.equal(empty.output, "");
+  assert.equal(empty.time, 0.01);
+  assert.equal(empty.memory, 3308);
   const output = "x".repeat(MAX_OUTPUT + 1);
-  const result = normalizeResult({ status: { id: 3 }, stdout: encode(output), time: "0.01", memory: 100 }, output);
-  assert.equal(result.verdict, "passed");
-  assert.equal(result.stdout.length, MAX_OUTPUT);
-  assert.equal(result.truncated, true);
-  assert.equal(result.time, 0.01);
-  assert.equal(result.memory, 100);
+  const long = normalizeExecution({ ...success, output }, output);
+  assert.equal(long.verdict, "passed");
+  assert.equal(long.output.length, MAX_OUTPUT);
+  assert.equal(long.truncated, true);
 });
 
-test("submits multiple cases, polls queued jobs, and returns verified evidence", async () => {
-  let count = 0;
-  const polls = new Map<string, number>();
-  const runner = createJudge0({ JUDGE0_URL: base, JUDGE0_AUTH_TOKEN: "test-token" }, async (url, init) => {
-    assert.equal(new Headers(init?.headers).get("X-Auth-Token"), "test-token");
-    const path = new URL(String(url)).pathname;
-    if (path === "/api/languages") return Response.json([{ id: 4, name: "C" }, { id: 135, name: "C++ (GCC)" }]);
-    if (path === "/api/submissions") {
-      const payload = JSON.parse(String(init?.body));
-      assert.equal(new URL(String(url)).searchParams.get("wait"), "false");
-      assert.equal(payload.language_id, 135);
-      assert.equal(payload.enable_network, false);
-      assert.equal(payload.cpu_time_limit, 2);
-      assert.equal(payload.source_code, encode(code));
-      assert.ok([encode("hello"), ""].includes(payload.stdin));
-      return Response.json({ token: String(count++) });
-    }
-    const token = path.split("/").at(-1)!;
-    const previous = polls.get(token) ?? 0;
-    polls.set(token, previous + 1);
-    if (!previous) return Response.json({ status: { id: 1 } });
-    return Response.json({ status: { id: 3 }, stdout: token === "0" ? encode("hello") : null });
-  });
-  const input = { code, testCases: [{ input: "hello", expectedOutput: "hello" }, { input: "", expectedOutput: "other" }] };
-  const response = await executeRequest(request(input), "student", secret, runner);
-  assert.equal(response.status, 200);
-  const { results, evidence } = await response.json();
-  assert.deepEqual(results.map((r: { verdict: string }) => r.verdict), ["passed", "failed"]);
-  assert.deepEqual(verifyEvidence(secret, "student", input, evidence), results);
-  assert.equal(verifyEvidence(secret, "student", { ...input, code: code + " " }, evidence), undefined);
-  assert.equal(verifyEvidence(secret, "someone else", input, evidence), undefined);
-  assert.equal(verifyEvidence(secret, "student", input, evidence + "x"), undefined);
+test("runs only the selected case per click and accumulates signed evidence", async (context) => {
+  context.mock.timers.enable({ apis: ["Date"], now: 10_000 });
+  const inputs: string[] = [];
+  const runner = (script: string, testCase: TestCase, requestSignal: AbortSignal) =>
+    runCode(script, testCase, requestSignal, credentials, async (url, init) => {
+      assert.equal(url, "https://api.jdoodle.com/v1/execute");
+      assert.equal(init?.method, "POST");
+      const body = JSON.parse(String(init?.body));
+      assert.deepEqual(body, {
+        clientId: "test-client", clientSecret: "test-secret", script: code, stdin: testCase.input,
+        language: "cpp17", versionIndex: "3",
+      });
+      inputs.push(body.stdin);
+      return Response.json({ ...success, output: body.stdin });
+    });
+  const input = { code, testCases: [
+    { input: "first", expectedOutput: "wrong" }, { input: "second", expectedOutput: "second" },
+  ] };
+
+  const first = await executeRequest(request({ ...input, caseIndex: 1 }), "student", secret, runner);
+  assert.equal(first.status, 200);
+  const firstRun = await first.json();
+  assert.deepEqual(inputs, ["second"]);
+  assert.equal(firstRun.result.verdict, "passed");
+  assert.deepEqual(verifyEvidence(secret, "student", input, firstRun.evidence), [null, firstRun.result]);
   assert.equal((await executeRequest(request(input), "student", secret, runner)).status, 429);
+  assert.deepEqual(inputs, ["second"]);
+
+  context.mock.timers.tick(5000);
+  const second = await executeRequest(request({ ...input, caseIndex: 0, evidence: firstRun.evidence }), "student", secret, runner);
+  assert.equal(second.status, 200);
+  const secondRun = await second.json();
+  assert.deepEqual(inputs, ["second", "first"]);
+  assert.equal(secondRun.result.verdict, "failed");
+  assert.deepEqual(verifyEvidence(secret, "student", input, secondRun.evidence), [secondRun.result, firstRun.result]);
+  assert.equal(verifyEvidence(secret, "other", input, secondRun.evidence), undefined);
+  assert.equal(verifyEvidence(secret, "student", { ...input, code: code + " " }, secondRun.evidence), undefined);
+  assert.equal(verifyEvidence(secret, "student", input, secondRun.evidence + "x"), undefined);
 });
 
-test("rejects unauthenticated, malformed, cross-origin and oversized requests before provider work", async () => {
+test("rejects invalid, unauthenticated, cross-origin and oversized requests before running", async () => {
   const neverRun = async () => { assert.fail("Provider must not run"); };
   assert.equal((await executeRequest(request({ code }), undefined, secret, neverRun)).status, 401);
-  assert.equal((await executeRequest(request({ code: 123 }), "student", secret, neverRun)).status, 400);
-  assert.equal((await executeRequest(request({ code, testCases: [{}] }), "student", secret, neverRun)).status, 400);
-  assert.equal((await executeRequest(request({ code: "x".repeat(33 * 1024) }), "student", secret, neverRun)).status, 400);
+  assert.equal((await executeRequest(request({ code: 123 }), "invalid", secret, neverRun)).status, 400);
+  assert.equal((await executeRequest(request({ code, caseIndex: 3 }), "invalid", secret, neverRun)).status, 400);
+  assert.equal((await executeRequest(request({ code, testCases: Array(5).fill(emptyTest) }), "invalid", secret, neverRun)).status, 400);
+  assert.equal((await executeRequest(request({ code: "x".repeat(33 * 1024) }), "invalid", secret, neverRun)).status, 400);
+
   const foreign = request({ code });
   foreign.headers.set("origin", "https://elsewhere.example");
-  assert.equal((await executeRequest(foreign, "student", secret, neverRun)).status, 403);
+  assert.equal((await executeRequest(foreign, "invalid", secret, neverRun)).status, 403);
 });
 
-test("reports provider failure without returning its response body", async () => {
-  const run = createJudge0({ JUDGE0_URL: base }, async () => new Response("provider private info", { status: 502 }));
-  const response = await executeRequest(request({ code }), "provider-error-test", secret, run);
-  assert.equal(response.status, 502);
-  assert.doesNotMatch(await response.text(), /private info/);
+test("reports quota, provider and credential errors without exposing provider messages or retrying", async () => {
+  let calls = 0;
+  for (const [http, providerStatus, expectedStatus] of [[429, 429, 429], [200, 429, 429], [200, 401, 503], [503, 503, 502]]) {
+    const runner = (script: string, testCase: TestCase, requestSignal: AbortSignal) =>
+      runCode(script, testCase, requestSignal, credentials, async () => {
+        const data = { statusCode: providerStatus, error: "private provider details" };
+        calls++;
+        return Response.json(data, { status: http });
+      });
+    const response = await executeRequest(request({ code }), `error-${calls}`, secret, runner);
+    assert.equal(response.status, expectedStatus);
+    const body = await response.text();
+    assert.doesNotMatch(body, /private provider details|test-secret/);
+    if (expectedStatus === 429) assert.match(body, /daily execution credits/);
+  }
+  assert.equal(calls, 4);
+  await assert.rejects(runCode(code, emptyTest, signal, {}), /not configured/);
 });

@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import { MAX_CASES, type ExecutionResult } from "@/lib/execution-types";
+import { MAX_CASES, type CaseResults } from "@/lib/execution-types";
 import OutputPanel from "@/components/OutputPanel";
 import Navbar from "@/components/Navbar";
 
@@ -69,7 +69,9 @@ export default function Home() {
   const runningRef = useRef(false);
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState("");
-  const [run, setRun] = useState<{ snapshot: string; results: ExecutionResult[]; evidence: string }>();
+  const [run, setRun] = useState<{ snapshot: string; results: CaseResults; evidence: string }>();
+  const [selectedCaseId, setSelectedCaseId] = useState("1");
+  const caseIndex = Math.max(0, testCases.findIndex((test) => test.id === selectedCaseId));
   const runInput = {
     code,
     testCases: testCases.map(({ input, expectedOutput, checkOutput }) => ({
@@ -83,18 +85,19 @@ export default function Home() {
     if (runningRef.current) return;
     runningRef.current = true;
     setRunning(true);
-    setRun(undefined);
     setRunError("");
     try {
       const response = await fetch("/api/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: snapshot,
+        body: JSON.stringify({ ...runInput, caseIndex, evidence: currentRun?.evidence }),
         signal: AbortSignal.timeout(40_000),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not run code.");
-      setRun({ snapshot, results: data.results, evidence: data.evidence });
+      const results = currentRun?.results.slice() ?? Array<null>(Math.max(1, testCases.length)).fill(null);
+      results[caseIndex] = data.result;
+      setRun({ snapshot, results, evidence: data.evidence });
     } catch (error) {
       setRunError(error instanceof Error ? error.message : "Could not run code.");
     } finally {
@@ -331,6 +334,8 @@ export default function Home() {
             results={currentRun?.results}
             stale={!!run && !currentRun}
             testCases={runInput.testCases}
+            caseIndex={caseIndex}
+            onSelectCase={(index) => setSelectedCaseId(testCases[index].id)}
           />
         </section>
       </main>

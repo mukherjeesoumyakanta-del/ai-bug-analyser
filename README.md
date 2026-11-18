@@ -12,9 +12,8 @@ A Next.js App Router app for running and reviewing C++ code. The home page uses 
 1. Use Node.js 22.18 or later (the test scripts use Node's built-in TypeScript support). Run `npm ci`.
 2. Copy `.env.example` to `.env.local`. Configure `DATABASE_URL` for your PostgreSQL database, `NEXTAUTH_URL=http://localhost:3000`, and a strong random `NEXTAUTH_SECRET`. Set `GEMINI_API_KEY` for AI analysis.
 3. For a **new development database**, check the connection points to the intended database and apply the checked-in migration with `npx drizzle-kit migrate`. An already initialized database with this schema needs no change for this feature.
-4. Set `JUDGE0_URL` to the HTTPS base URL of a trusted, patched [Judge0-compatible sandbox](https://ce.judge0.com/). Set `JUDGE0_AUTH_TOKEN` for a native `X-Auth-Token` credential or `JUDGE0_API_KEY` for RapidAPI (the host header is derived from the configured URL). Use the provider's active `/languages` list to optionally set `JUDGE0_CPP_NAME` to an exact C++ compiler name; otherwise the app uses the first active C++ entry.
-5. The provider must accept the per-job CPU, wall, memory, file, and network settings sent by this app. Confirm program network access is disabled on the provider for your integration, and set a provider-side quota. Source and stdin are sent to the provider, so check its retention and access policy.
-6. Run `npm run dev`, open `http://localhost:3000`, register an account, and sign in. Open **Test Cases** to set stdin and opt into an expected-output check. Use **Run Code**, then **Analyze with AI**. Refresh Analytics after a completed analysis to see saved categories.
+4. Set `JDOODLE_CLIENT_ID` and `JDOODLE_CLIENT_SECRET` in `.env.local` from your JDoodle Compiler API dashboard. The server uses the official [JDoodle REST API](https://www.jdoodle.com/docs/api/rest) and pins [C++17, GCC 15.2.1](https://www.jdoodle.com/docs/api/languages) as `cpp17` with `versionIndex: "3"`.
+5. Run `npm run dev`, open `http://localhost:3000`, register, and sign in. Open **Test Cases** to set stdin and optionally check an expected output. Select the case to run, then click **Run Code**. Select another case to run it separately. **Analyze with AI** can use recorded results. Refresh Analytics after a completed analysis to see saved categories.
 
 The same variables are server-only Vercel project settings if you deploy; set `NEXTAUTH_URL` to the applicable deployment origin. The execution and analysis routes declare 35-second and 60-second function durations. Google fonts are downloaded at build time, and Monaco loads its assets through the existing editor integration.
 
@@ -24,20 +23,19 @@ The same variables are server-only Vercel project settings if you deploy; set `N
 flowchart LR
     A["Monaco and test cases"] --> B["POST /api/execute"]
     B --> C["Check session, inputs and run limit"]
-    C --> D["Judge0: discover C++ and submit jobs"]
-    D --> E["Next.js polls until terminal status"]
-    E --> F["Compare stdout and sign evidence"]
+    C --> D["JDoodle: one REST call for the selected case"]
+    D --> F["Read program outcome, compare output, sign evidence"]
     F --> G["Show output, errors and verdicts"]
     G --> H["POST /api/analyze with matching evidence"]
     H --> I["Verify evidence and stream Gemini review"]
     I --> J["Extract categories and save analytics"]
 ```
 
-The Run endpoint accepts `{ code, testCases: [{ input, expectedOutput }] }`. With no test cases, it runs once with empty stdin and no expectation. The sandbox receives Base64 source and stdin; submission tokens and credentials stay on the server. The sandbox runs the cases in independent jobs; the app keeps their original order. A sandbox timeout is distinct from a network or polling timeout. Run evidence is signed, tied to the user and exact code/tests, and expires after 30 minutes. Editing code or tests hides stale results. Gemini receives short output excerpts and is instructed to label predictions separately from observations.
+The route accepts `{ code, testCases: [{ input, expectedOutput }], caseIndex, evidence }`. A run with no cases uses empty stdin. The server sends source and stdin to JDoodle in one request. There are no automatic runs, polls, or retries. JDoodle's API status describes the request. The app uses its program flags and timeout diagnostic to classify the result. If JDoodle omits the program outcome, the result is unchecked.
 
-**Output policy:** the check compares stdout only. CRLF becomes LF; all other characters count, including leading and trailing spaces, tabs, and the final newline. A missing expectation is represented by `null` and shows as **not checked**. A checked blank expectation requires genuinely empty stdout. Failed compilation, runtime failures, and execution timeouts fail checked cases. Provider errors leave cases unchecked. Invalid UTF-8 output cannot match a text expectation. Comparison uses full returned stdout before display truncation.
+The comparison uses JDoodle's full returned output before shortening the display. It normalizes CRLF to LF and preserves all other characters. JDoodle can combine stdout and stderr and can omit the final newline, so enter the expected output as JDoodle returns it. A checked blank expectation requires empty returned output. A missing expectation remains unchecked. Editing code or tests hides old results. Signed results are bound to the user and exact code and tests for 30 minutes. Gemini receives excerpts of the cases already run.
 
-**Limits:** 32 KiB source, four test cases, 8 KiB per input and expected output, 2 seconds of CPU time and 5 seconds of wall time per execution job, and 4 KiB of displayed data per output stream. Provider calls have a 5-second timeout each; the whole submission/poll phase has a 25-second deadline. The in-memory cooldown allows one run per user per 25 seconds per process. It resets on a cold start and is not a global quota across Vercel instances. If polling stops, a submitted job may still finish under the provider's limits.
+The [Free API plan](https://www.jdoodle.com/docs/api/credits) has 20 daily credits. A click runs one case and can use one credit, including a compile or runtime failure. Four custom cases, 32 KiB of source, 8 KiB per input or expectation, and 4,096 displayed output characters are allowed. The server allows one in-flight run per user per process, with at least five seconds between starts. JDoodle enforces its daily quota and sandbox limits. A 25-second wait limit on this app's provider request can expire before the provider returns. A provider timeout and a program timeout are shown separately.
 
 ## Verification
 
@@ -46,7 +44,6 @@ npm run lint
 npx tsc --noEmit
 npm run build
 npm test
-npm run test:live
 ```
 
-`npm test` checks request handling, comparison, limits, status mapping, the HTTP contract, and signed evidence using local test inputs and a simulated provider transport. `npm run test:live` sends six small C++ submissions to the configured provider, covering stdin/stdout, multiple cases, empty output, compile failure, nonzero exit, and timeout. It skips when `JUDGE0_URL` is unset. A browser smoke test also requires a real database and Gemini key to exercise registration, login, AI streaming, and analytics.
+`npm test` uses mocked JDoodle responses and consumes zero credits. Run `npm run test:live` explicitly for one real C++ stdin/output check, which can use one credit. It skips if the JDoodle credentials are missing. Registration, Gemini streaming, and analytics need a configured database and Gemini key for an end-to-end smoke test.

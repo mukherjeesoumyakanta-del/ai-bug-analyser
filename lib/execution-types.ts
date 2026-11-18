@@ -7,14 +7,11 @@ export const RUN_LIMIT_MS = 25_000;
 export type TestCase = { input: string; expectedOutput: string | null };
 export type RunInput = { code: string; testCases: TestCase[] };
 export type ExecutionResult = {
-  status: "success" | "compile_error" | "runtime_error" | "timeout" | "provider_error" | "provider_timeout";
-  stdout: string;
-  stderr: string;
-  compileOutput: string;
+  status: "success" | "compile_error" | "runtime_error" | "timeout" | "unknown";
+  output: string;
   truncated: boolean;
   time: number | null;
-  exitCode: number | null;
-  exitSignal: number | null;
   memory: number | null;
   verdict: "passed" | "failed" | "not_checked";
 };
+export type CaseResults = (ExecutionResult | null)[];

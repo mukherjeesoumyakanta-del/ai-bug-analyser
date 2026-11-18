@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ExecutionOutput from "./ExecutionOutput";
-import type { ExecutionResult, TestCase } from "@/lib/execution-types";
+import type { CaseResults, TestCase } from "@/lib/execution-types";
 
 type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
 
@@ -15,15 +15,17 @@ interface OutputPanelProps {
   onRun: () => void;
   running: boolean;
   runError: string;
-  results?: ExecutionResult[];
+  results?: CaseResults;
   stale: boolean;
   testCases: TestCase[];
+  caseIndex: number;
+  onSelectCase: (index: number) => void;
 }
 
 export default function OutputPanel({
   displayedText,
   status,
-  onAnalyze, onRun, running, runError, results, stale, testCases,
+  onAnalyze, onRun, running, runError, results, stale, testCases, caseIndex, onSelectCase,
 }: OutputPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { status: authStatus } = useSession();
@@ -86,7 +88,7 @@ export default function OutputPanel({
         </div>
       </div>
 
-      <ExecutionOutput {...{ running, runError, results, stale, testCases }} />
+      <ExecutionOutput {...{ running, runError, results, stale, testCases, caseIndex }} />
       {/* ── Scrollable Output ──────────────────── */}
       <div
         ref={scrollRef}
@@ -139,6 +141,18 @@ export default function OutputPanel({
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 px-5 pt-2 pb-2 text-xs text-gray-300">
+        {testCases.length > 1 && (
+          <label className="flex items-center gap-2">
+            Test to run
+            <select value={caseIndex} onChange={(event) => onSelectCase(Number(event.target.value))}
+              disabled={running} className="rounded border border-white/20 bg-slate-900 px-2 py-1">
+              {testCases.map((_, index) => <option key={index} value={index}>Test {index + 1}</option>)}
+            </select>
+          </label>
+        )}
+        <span>One case and one credit per run</span>
+      </div>
       {/* ── Footer with Button ─────────────────── */}
       <div
         className="px-5 py-4 border-t flex gap-2"
@@ -149,7 +163,7 @@ export default function OutputPanel({
           disabled={running || authStatus === "loading"}
           className="btn-gradient flex-1"
         >
-          {running ? "Running…" : "Run Code"}
+          <span>{running ? "Running…" : "Run Code"}</span>
         </button>
         <button
           id="analyze-bug-btn"

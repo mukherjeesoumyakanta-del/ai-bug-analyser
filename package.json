@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/execution.test.ts",
-    "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local --test tests/judge0.live.test.ts"
+    "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local --test tests/jdoodle.live.test.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.2",
