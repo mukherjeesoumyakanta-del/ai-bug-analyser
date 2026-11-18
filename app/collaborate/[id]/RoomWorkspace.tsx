@@ -45,7 +45,7 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-4 p-4">
+    <main className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col gap-3 p-2 sm:gap-4 sm:p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-xl font-semibold">Debug room {id.slice(0, 8)}</h1>
           <p role="status" className="text-sm text-slate-400">Live editing · {status}</p></div>
@@ -55,21 +55,21 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
         </div>
       </header>
       {providerError && status !== "connected" && <p role="alert" className="rounded-lg bg-red-950/60 p-3 text-sm text-red-200">Live editing could not connect. Check the server setup or reload to retry.</p>}
-      <div className="grid flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="glass-panel flex min-h-[420px] flex-col overflow-hidden">
+      <div className="grid min-w-0 flex-1 gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <section className="glass-panel flex min-h-[300px] min-w-0 flex-col overflow-hidden">
           <nav aria-label="Room workspace" className="flex gap-2 border-b border-white/10 p-2 text-sm">
             <button type="button" aria-pressed={panel === "code"} onClick={() => setPanel("code")}
               className="rounded px-3 py-2 hover:bg-white/10 aria-pressed:bg-violet-900/70">Shared code</button>
             <button type="button" aria-pressed={panel === "board"} onClick={() => setPanel("board")}
               className="rounded px-3 py-2 hover:bg-white/10 aria-pressed:bg-violet-900/70">Whiteboard</button>
           </nav>
-          <div hidden={panel !== "code"} className="min-h-[380px] flex-1">
+          <div hidden={panel !== "code"} className="min-w-0 flex-1">
             <h2 className="border-b border-white/10 px-3 py-2 text-sm font-medium">Shared editor · main.cpp</h2>
-            <div className="h-[clamp(360px,65vh,820px)]"><SharedEditor /></div>
+            <div className="h-[clamp(280px,60dvh,820px)]"><SharedEditor /></div>
           </div>
           <section hidden={panel !== "board"}><Whiteboard /></section>
         </section>
-        <aside className="glass-panel space-y-4 p-4">
+        <aside className="glass-panel min-w-0 space-y-4 p-4">
           <h2 className="font-semibold">Participants · {participants.length}/2</h2>
           <ul className="space-y-3">
             {participants.map((person) => {

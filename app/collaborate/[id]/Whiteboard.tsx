@@ -153,7 +153,7 @@ export default function Whiteboard() {
           {colors.map((item) => <button type="button" key={item.name} aria-label={item.name}
             aria-pressed={color === item.value && tool === "pen"} disabled={!enabled}
             onClick={() => { setColor(item.value); setTool("pen"); }}
-            className="size-6 rounded-full border border-white/30 aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-violet-300 disabled:opacity-50"
+            className="size-8 rounded-full border border-white/30 aria-pressed:outline-2 aria-pressed:outline-offset-2 aria-pressed:outline-violet-300 disabled:opacity-50"
             style={{ backgroundColor: item.value }} />)}
         </div>
         <button type="button" disabled={!enabled || !count} onClick={clear}

@@ -37,7 +37,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen items-center justify-center p-6 relative">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-20">
       <Link
         href="/"
         className="absolute top-6 left-6 text-sm font-medium hover:text-white transition-colors"
@@ -46,7 +46,7 @@ export default function RegisterPage() {
         &larr; Back to Home
       </Link>
       
-      <div className="glass-panel glass-panel-glow w-full max-w-md p-8 animate-fade-in flex flex-col gap-6">
+      <div className="glass-panel glass-panel-glow w-full max-w-md p-5 sm:p-8 animate-fade-in flex flex-col gap-6">
         <div className="text-center">
           <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Create an Account</h1>
           <p className="text-sm" style={{ color: "var(--text-muted)" }}>Sign up to save and analyze your bugs.</p>
@@ -87,7 +87,7 @@ export default function RegisterPage() {
             disabled={loading}
             className="btn-gradient w-full mt-2 justify-center"
           >
-            {loading ? <div className="spinner" /> : "Register"}
+            {loading ? <div className="spinner" /> : <span>Register</span>}
           </button>
         </form>
 

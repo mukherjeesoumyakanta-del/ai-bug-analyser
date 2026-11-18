@@ -10,7 +10,7 @@ export default function Navbar() {
 
   return (
     <header
-      className="flex items-center justify-between px-6 py-3 border-b animate-fade-in"
+      className="flex shrink-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 px-3 py-2 sm:px-6 sm:py-3 border-b animate-fade-in"
       style={{
         borderColor: "var(--border-glass)",
         background: "rgba(6, 6, 14, 0.8)",
@@ -52,7 +52,7 @@ export default function Navbar() {
         </Link>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
         <Link href="/collaborate" className="text-xs font-medium text-violet-300 hover:text-white">
           Debug Together
         </Link>

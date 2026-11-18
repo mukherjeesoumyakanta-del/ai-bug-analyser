@@ -75,7 +75,8 @@ body {
   background: linear-gradient(165deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0a0c1a 100%);
   color: var(--text-primary);
   font-family: var(--font-ui);
-  overflow: hidden;
+  overflow-x: clip;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 /* ── Custom Scrollbar ──────────────────────── */
@@ -342,4 +343,25 @@ body {
 
 .monaco-container .overflow-guard {
   border-radius: 0 0 16px 16px;
+}
+
+/* Touch controls and form fields stay usable on small screens and with the keyboard open. */
+@media (pointer: coarse) {
+  button, a, select, summary {
+    touch-action: manipulation;
+  }
+
+  button, select, summary {
+    min-height: 44px;
+  }
+
+  input:not([type="checkbox"]), textarea, select {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 639px) {
+  .btn-gradient {
+    padding-inline: 12px;
+  }
 }

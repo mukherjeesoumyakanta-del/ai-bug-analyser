@@ -194,14 +194,14 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <Navbar />
 
       {/* ── Main Split Panels ─────────────────── */}
-      <main className="flex flex-1 overflow-hidden p-3 gap-3">
+      <main className="flex flex-col gap-3 p-2 sm:p-3 lg:min-h-0 lg:flex-1 lg:flex-row lg:overflow-hidden">
         {/* Left Panel — Code Editor */}
         <section
-          className="glass-panel glass-panel-glow flex flex-col flex-1 overflow-hidden animate-slide-up-delay-1"
+          className="glass-panel glass-panel-glow flex h-[min(75dvh,680px)] min-h-[400px] flex-col overflow-hidden animate-slide-up-delay-1 lg:h-auto lg:min-h-0 lg:flex-1"
           style={{ minWidth: 0 }}
         >
           {/* Panel header */}
@@ -273,8 +273,8 @@ export default function Home() {
                         <span className="text-xs font-medium" style={{ color: "var(--text-secondary)" }}>Test Case {index + 1}</span>
                         <button onClick={() => handleRemoveTestCase(tc.id)} className="text-[10px] text-red-400 hover:text-red-300 uppercase tracking-wider font-semibold">Remove</button>
                       </div>
-                      <div className="flex gap-4">
-                        <div className="flex-1 flex flex-col gap-1">
+                      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:gap-4">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <label htmlFor={`input-${tc.id}`} className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Input</label>
                           <textarea
                             id={`input-${tc.id}`}
@@ -285,7 +285,7 @@ export default function Home() {
                             placeholder="e.g. 5 10"
                           />
                         </div>
-                        <div className="flex-1 flex flex-col gap-1">
+                        <div className="flex min-w-0 flex-1 flex-col gap-1">
                           <label htmlFor={`expected-${tc.id}`} className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Expected Output</label>
                           <textarea
                             id={`expected-${tc.id}`}
@@ -323,7 +323,7 @@ export default function Home() {
 
         {/* Right Panel — AI Output */}
         <section
-          className="glass-panel glass-panel-glow flex flex-col flex-1 overflow-hidden animate-slide-up-delay-2"
+          className="glass-panel glass-panel-glow flex h-[min(80dvh,760px)] min-h-[440px] flex-col overflow-hidden animate-slide-up-delay-2 lg:h-auto lg:min-h-0 lg:flex-1"
           style={{ minWidth: 0 }}
         >
           <OutputPanel

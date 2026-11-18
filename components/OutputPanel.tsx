@@ -49,7 +49,7 @@ export default function OutputPanel({
     <div className="flex flex-col h-full">
       {/* ── Header ─────────────────────────────── */}
       <div
-        className="flex items-center justify-between px-5 py-3 border-b"
+        className="flex flex-wrap items-center justify-between gap-2 px-3 py-3 sm:px-5 border-b"
         style={{ borderColor: "var(--border-glass)" }}
       >
         <div className="flex items-center gap-3">
@@ -92,11 +92,11 @@ export default function OutputPanel({
       {/* ── Scrollable Output ──────────────────── */}
       <div
         ref={scrollRef}
-        className="custom-scrollbar flex-1 overflow-y-auto px-5 py-4"
+        className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5"
       >
         {displayedText ? (
           <div
-            className={`font-mono text-sm leading-relaxed whitespace-pre-wrap ${
+            className={`font-mono text-sm leading-relaxed whitespace-pre-wrap break-words ${
               status === "analyzing" ? "streaming-cursor" : ""
             }`}
             style={{
@@ -155,13 +155,13 @@ export default function OutputPanel({
       </div>
       {/* ── Footer with Button ─────────────────── */}
       <div
-        className="px-5 py-4 border-t flex gap-2"
+        className="flex shrink-0 flex-wrap gap-2 border-t px-3 py-3 sm:px-5 sm:py-4"
         style={{ borderColor: "var(--border-glass)" }}
       >
         <button
           onClick={() => authStatus === "authenticated" ? onRun() : router.push("/login")}
           disabled={running || authStatus === "loading"}
-          className="btn-gradient flex-1"
+          className="btn-gradient min-w-0 flex-1 px-3 sm:px-5"
         >
           <span>{running ? "Running…" : "Run Code"}</span>
         </button>
@@ -175,7 +175,7 @@ export default function OutputPanel({
             }
           }}
           disabled={status === "analyzing" || running || authStatus === "loading"}
-          className="btn-gradient flex-1"
+          className="btn-gradient min-w-0 flex-1 px-3 sm:px-5"
         >
           {authStatus !== "authenticated" ? (
             <>

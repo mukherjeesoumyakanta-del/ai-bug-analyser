@@ -43,7 +43,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="glass-panel glass-panel-glow w-full max-w-md p-8 animate-fade-in flex flex-col gap-6">
+    <div className="glass-panel glass-panel-glow w-full max-w-md p-5 sm:p-8 animate-fade-in flex flex-col gap-6">
       <div className="text-center">
         <h1 className="text-2xl font-bold tracking-tight text-white mb-2">Welcome Back</h1>
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>Sign in to analyze your code.</p>
@@ -102,7 +102,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex flex-col h-screen items-center justify-center p-6 relative">
+    <div className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-20">
       <Link
         href="/"
         className="absolute top-6 left-6 text-sm font-medium hover:text-white transition-colors"
