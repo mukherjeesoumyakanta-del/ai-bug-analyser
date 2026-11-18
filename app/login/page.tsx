@@ -32,7 +32,7 @@ function LoginForm() {
         router.push("/");
         router.refresh(); // Refresh to update session globally
       }
-    } catch (err) {
+    } catch {
       setError("An unexpected error occurred");
     } finally {
       setLoading(false);
@@ -91,7 +91,7 @@ function LoginForm() {
       </form>
 
       <p className="text-center text-sm" style={{ color: "var(--text-muted)" }}>
-        Don't have an account? <Link href="/register" className="text-white hover:underline">Register</Link>
+        Don&apos;t have an account? <Link href="/register" className="text-white hover:underline">Register</Link>
       </p>
     </div>
   );

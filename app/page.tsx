@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useRef } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { MAX_CASES, type ExecutionResult } from "@/lib/execution-types";
 import OutputPanel from "@/components/OutputPanel";
 import Navbar from "@/components/Navbar";
 
@@ -52,6 +52,7 @@ type TestCase = {
   id: string;
   input: string;
   expectedOutput: string;
+  checkOutput: boolean;
 };
 
 type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
@@ -59,17 +60,53 @@ type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
 export default function Home() {
   const [code, setCode] = useState(STARTER_CODE);
   const [testCases, setTestCases] = useState<TestCase[]>([
-    { id: "1", input: "", expectedOutput: "" },
+    { id: "1", input: "", expectedOutput: "", checkOutput: false },
   ]);
   const [showTestCases, setShowTestCases] = useState(false);
   const [displayedText, setDisplayedText] = useState("");
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const abortRef = useRef<AbortController | null>(null);
+  const runningRef = useRef(false);
+  const [running, setRunning] = useState(false);
+  const [runError, setRunError] = useState("");
+  const [run, setRun] = useState<{ snapshot: string; results: ExecutionResult[]; evidence: string }>();
+  const runInput = {
+    code,
+    testCases: testCases.map(({ input, expectedOutput, checkOutput }) => ({
+      input, expectedOutput: checkOutput ? expectedOutput : null,
+    })),
+  };
+  const snapshot = JSON.stringify(runInput);
+  const currentRun = run?.snapshot === snapshot ? run : undefined;
+
+  async function handleRun() {
+    if (runningRef.current) return;
+    runningRef.current = true;
+    setRunning(true);
+    setRun(undefined);
+    setRunError("");
+    try {
+      const response = await fetch("/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: snapshot,
+        signal: AbortSignal.timeout(40_000),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not run code.");
+      setRun({ snapshot, results: data.results, evidence: data.evidence });
+    } catch (error) {
+      setRunError(error instanceof Error ? error.message : "Could not run code.");
+    } finally {
+      runningRef.current = false;
+      setRunning(false);
+    }
+  }
 
   const handleAddTestCase = () => {
-    setTestCases((prev) => [
+    setTestCases((prev) => prev.length >= MAX_CASES ? prev : [
       ...prev,
-      { id: Math.random().toString(36).slice(2, 9), input: "", expectedOutput: "" },
+      { id: crypto.randomUUID(), input: "", expectedOutput: "", checkOutput: false },
     ]);
   };
 
@@ -84,13 +121,9 @@ export default function Home() {
   };
 
   /* ── Fetch streaming response from /api/analyze ── */
-  const handleAnalyze = useCallback(async () => {
-    if (status === "analyzing") return;
+  async function handleAnalyze() {
+    if (status === "analyzing" || abortRef.current) return;
 
-    // Abort any previous in-flight request
-    if (abortRef.current) {
-      abortRef.current.abort();
-    }
     const controller = new AbortController();
     abortRef.current = controller;
 
@@ -101,7 +134,7 @@ export default function Home() {
       const response = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code, testCases }),
+        body: JSON.stringify({ ...runInput, evidence: currentRun?.evidence }),
         signal: controller.signal,
       });
 
@@ -139,6 +172,7 @@ export default function Home() {
         setDisplayedText(accumulated);
       }
 
+      setDisplayedText(accumulated + decoder.decode());
       setStatus("complete");
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -152,7 +186,7 @@ export default function Home() {
     } finally {
       abortRef.current = null;
     }
-  }, [code, status]);
+  }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
@@ -236,8 +270,9 @@ export default function Home() {
                       </div>
                       <div className="flex gap-4">
                         <div className="flex-1 flex flex-col gap-1">
-                          <label className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Input</label>
+                          <label htmlFor={`input-${tc.id}`} className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Input</label>
                           <textarea
+                            id={`input-${tc.id}`}
                             value={tc.input}
                             onChange={(e) => handleTestCaseChange(tc.id, "input", e.target.value)}
                             className="w-full bg-transparent border rounded p-2 text-xs text-white resize-none h-16 focus:outline-none"
@@ -246,8 +281,10 @@ export default function Home() {
                           />
                         </div>
                         <div className="flex-1 flex flex-col gap-1">
-                          <label className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Expected Output</label>
+                          <label htmlFor={`expected-${tc.id}`} className="text-[10px] uppercase" style={{ color: "var(--text-muted)" }}>Expected Output</label>
                           <textarea
+                            id={`expected-${tc.id}`}
+                            disabled={!tc.checkOutput}
                             value={tc.expectedOutput}
                             onChange={(e) => handleTestCaseChange(tc.id, "expectedOutput", e.target.value)}
                             className="w-full bg-transparent border rounded p-2 text-xs text-white resize-none h-16 focus:outline-none"
@@ -256,10 +293,18 @@ export default function Home() {
                           />
                         </div>
                       </div>
+                      <label className="flex items-center gap-2 text-xs text-white">
+                        <input type="checkbox" checked={tc.checkOutput} onChange={(e) => {
+                          const checked = e.target.checked;
+                          setTestCases((prev) => prev.map((item) => item.id === tc.id ? { ...item, checkOutput: checked } : item));
+                        }} />
+                        Check expected output (blank means no output)
+                      </label>
                     </div>
                   ))}
                   <button
                     onClick={handleAddTestCase}
+                    disabled={testCases.length >= MAX_CASES}
                     className="text-xs px-3 py-1.5 rounded border hover:bg-white/10 transition-colors w-full border-dashed"
                     style={{ borderColor: "var(--border-glass)", color: "var(--text-primary)" }}
                   >
@@ -280,6 +325,12 @@ export default function Home() {
             displayedText={displayedText}
             status={status}
             onAnalyze={handleAnalyze}
+            onRun={handleRun}
+            running={running}
+            runError={runError}
+            results={currentRun?.results}
+            stale={!!run && !currentRun}
+            testCases={runInput.testCases}
           />
         </section>
       </main>

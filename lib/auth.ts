@@ -1,8 +1,9 @@
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
+import type { Adapter } from "next-auth/adapters";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "@/db";
-import { users } from "@/db/schema";
+import { users, accounts, sessions, verificationTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
@@ -18,7 +19,11 @@ declare module "next-auth" {
 }
 
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db) as any, // Typecast adapter to avoid mismatches
+  // NextAuth v4 and the Drizzle adapter use different core adapter typings.
+  adapter: DrizzleAdapter(db, {
+    usersTable: users, accountsTable: accounts, sessionsTable: sessions,
+    verificationTokensTable: verificationTokens,
+  }) as Adapter,
   providers: [
     CredentialsProvider({
       name: "Credentials",

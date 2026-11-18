@@ -3,6 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import ExecutionOutput from "./ExecutionOutput";
+import type { ExecutionResult, TestCase } from "@/lib/execution-types";
 
 type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
 
@@ -10,12 +12,18 @@ interface OutputPanelProps {
   displayedText: string;
   status: AnalysisStatus;
   onAnalyze: () => void;
+  onRun: () => void;
+  running: boolean;
+  runError: string;
+  results?: ExecutionResult[];
+  stale: boolean;
+  testCases: TestCase[];
 }
 
 export default function OutputPanel({
   displayedText,
   status,
-  onAnalyze,
+  onAnalyze, onRun, running, runError, results, stale, testCases,
 }: OutputPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { status: authStatus } = useSession();
@@ -78,6 +86,7 @@ export default function OutputPanel({
         </div>
       </div>
 
+      <ExecutionOutput {...{ running, runError, results, stale, testCases }} />
       {/* ── Scrollable Output ──────────────────── */}
       <div
         ref={scrollRef}
@@ -123,7 +132,7 @@ export default function OutputPanel({
               className="text-sm text-center max-w-[240px]"
               style={{ color: "var(--text-muted)" }}
             >
-              Click <strong>Analyze Bug</strong> to scan your C++ code for
+              Click <strong>Analyze with AI</strong> to scan your C++ code for
               potential issues.
             </p>
           </div>
@@ -132,9 +141,16 @@ export default function OutputPanel({
 
       {/* ── Footer with Button ─────────────────── */}
       <div
-        className="px-5 py-4 border-t"
+        className="px-5 py-4 border-t flex gap-2"
         style={{ borderColor: "var(--border-glass)" }}
       >
+        <button
+          onClick={() => authStatus === "authenticated" ? onRun() : router.push("/login")}
+          disabled={running || authStatus === "loading"}
+          className="btn-gradient flex-1"
+        >
+          {running ? "Running…" : "Run Code"}
+        </button>
         <button
           id="analyze-bug-btn"
           onClick={() => {
@@ -144,8 +160,8 @@ export default function OutputPanel({
               onAnalyze();
             }
           }}
-          disabled={status === "analyzing" || authStatus === "loading"}
-          className="btn-gradient w-full"
+          disabled={status === "analyzing" || running || authStatus === "loading"}
+          className="btn-gradient flex-1"
         >
           {authStatus !== "authenticated" ? (
             <>
@@ -184,7 +200,7 @@ export default function OutputPanel({
                 <path d="M22 13h-4" />
                 <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" />
               </svg>
-              <span>Analyze Bug</span>
+              <span>Analyze with AI</span>
             </>
           )}
         </button>
