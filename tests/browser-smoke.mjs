@@ -114,7 +114,6 @@ try {
   await a.page.getByRole("heading", { name: "Participants · 2/2" }).waitFor();
   console.log("Liveblocks and Monaco passed bidirectional edits, simultaneous convergence, reload, and a second tab for B.");
 
-  if (process.argv.includes("--board") || process.argv.includes("--voice")) {
     async function whiteboard(page) {
       await page.getByRole("button", { name: "Whiteboard" }).click();
       await page.getByRole("button", { name: /^pen$/i }).waitFor();
@@ -134,6 +133,7 @@ try {
       const value = canvas.getContext("2d").getImageData(Math.round(canvas.width * x), Math.round(canvas.height * y), 1, 1).data[3];
       return alpha ? value > 20 : value === 0;
     }, { x, y, alpha });
+  if (process.argv.includes("--board") || process.argv.includes("--voice")) {
     await Promise.all([whiteboard(a.page), whiteboard(b.page)]);
     await a.page.getByRole("button", { name: "Blue", exact: true }).click();
     await b.page.getByRole("button", { name: "Green", exact: true }).click();
