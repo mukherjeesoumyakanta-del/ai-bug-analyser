@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+import type { editor } from "monaco-editor";
 import Editor, { type OnMount } from "@monaco-editor/react";
 
 interface CodeEditorProps {
@@ -7,11 +9,29 @@ interface CodeEditorProps {
   onChange?: (value: string) => void;
   onMount?: OnMount;
   readOnly?: boolean;
+  focusLine?: { start: number; end: number; key: number };
 }
 
-export default function CodeEditor({ value, onChange, onMount, readOnly = false }: CodeEditorProps) {
+export default function CodeEditor({ value, onChange, onMount, readOnly = false, focusLine }: CodeEditorProps) {
+  const [instance, setInstance] = useState<editor.IStandaloneCodeEditor>();
+  const container = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!instance || !focusLine) return;
+    const model = instance.getModel();
+    if (!model || focusLine.end > model.getLineCount()) return;
+    const decoration = instance.createDecorationsCollection([{
+      range: { startLineNumber: focusLine.start, endLineNumber: focusLine.end, startColumn: 1, endColumn: 1 },
+      options: { isWholeLine: true, className: "finding-source-line" },
+    }]);
+    container.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    instance.revealLineInCenter(focusLine.start);
+    instance.focus();
+    const change = model.onDidChangeContent(() => decoration.clear());
+    return () => { change.dispose(); if (!model.isDisposed()) decoration.clear(); };
+  }, [instance, focusLine]);
+
   return (
-    <div className="monaco-container h-full w-full">
+    <div ref={container} className="monaco-container h-full w-full">
       <Editor
         height="100%"
         width="100%"
@@ -19,7 +39,7 @@ export default function CodeEditor({ value, onChange, onMount, readOnly = false 
         theme="vs-dark"
         value={value}
         onChange={onChange ? (val) => onChange(val ?? "") : undefined}
-        onMount={onMount}
+        onMount={(instance, monaco) => { setInstance(instance); onMount?.(instance, monaco); }}
         loading={
           <div className="flex items-center justify-center h-full w-full">
             <div className="flex flex-col items-center gap-3">

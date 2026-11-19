@@ -1,0 +1,1 @@
+ALTER TABLE "debug_activities" ADD COLUMN "analysis" jsonb;

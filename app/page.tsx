@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { MAX_CASES, type CaseResults } from "@/lib/execution-types";
 import OutputPanel from "@/components/OutputPanel";
 import Navbar from "@/components/Navbar";
+import type { AnalysisReport } from "@/lib/analysis-report";
 
 /* Dynamically import Monaco — must disable SSR to avoid "window is not defined" */
 const CodeEditor = dynamic(() => import("@/components/CodeEditor"), {
@@ -66,6 +67,8 @@ export default function Home() {
   const [displayedText, setDisplayedText] = useState("");
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const [analysisSnapshot, setAnalysisSnapshot] = useState<string>();
+  const [analysisReport, setAnalysisReport] = useState<AnalysisReport>();
+  const [focusLine, setFocusLine] = useState<{ start: number; end: number; key: number }>();
   const abortRef = useRef<AbortController | null>(null);
   const runningRef = useRef(false);
   const [running, setRunning] = useState(false);
@@ -124,7 +127,7 @@ export default function Home() {
     );
   };
 
-  /* ── Fetch streaming response from /api/analyze ── */
+  /* Generate and display a validated analysis report. */
   async function handleAnalyze() {
     if (status === "analyzing" || abortRef.current) return;
 
@@ -132,6 +135,7 @@ export default function Home() {
     abortRef.current = controller;
 
     setDisplayedText("");
+    setAnalysisReport(undefined);
     setAnalysisSnapshot(snapshot);
     setStatus("analyzing");
 
@@ -157,27 +161,8 @@ export default function Home() {
         return;
       }
 
-      /* ── Read the stream ──────────────────────── */
-      const reader = response.body?.getReader();
-      if (!reader) {
-        setDisplayedText("Failed to open response stream.");
-        setStatus("error");
-        return;
-      }
-
-      const decoder = new TextDecoder("utf-8");
-      let accumulated = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream: true });
-        accumulated += chunk;
-        setDisplayedText(accumulated);
-      }
-
-      setDisplayedText(accumulated + decoder.decode());
+      const data = await response.json();
+      setAnalysisReport(data.report);
       setStatus("complete");
     } catch (error: unknown) {
       if (error instanceof DOMException && error.name === "AbortError") {
@@ -209,32 +194,19 @@ export default function Home() {
             className="flex items-center gap-3 px-5 py-3 border-b"
             style={{ borderColor: "var(--border-glass)" }}
           >
-            {/* Traffic light dots */}
-            <div className="flex items-center gap-1.5">
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ background: "#ff5f57" }}
-              />
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ background: "#febc2e" }}
-              />
-              <div
-                className="w-3 h-3 rounded-full"
-                style={{ background: "#28c840" }}
-              />
-            </div>
+
             <span
               className="text-xs font-medium tracking-wide uppercase"
               style={{ color: "var(--text-secondary)" }}
             >
               main.cpp
             </span>
+            <span className="ml-auto text-xs text-slate-400">C++17</span>
           </div>
           {/* Editor & Test Cases */}
           <div className="flex-1 overflow-hidden flex flex-col">
             <div className="flex-1 min-h-0 relative">
-              <CodeEditor value={code} onChange={setCode} />
+              <CodeEditor value={code} onChange={setCode} focusLine={focusLine} />
             </div>
 
             {/* Test Cases Collapsible Panel */}
@@ -330,6 +302,8 @@ export default function Home() {
             displayedText={analysisSnapshot && analysisSnapshot !== snapshot
               ? "Code or tests changed. Analyze again for a review of this version." : displayedText}
             status={analysisSnapshot !== snapshot && status !== "analyzing" ? "idle" : status}
+            report={analysisSnapshot === snapshot ? analysisReport : undefined}
+            onSelectLine={(start, end) => setFocusLine({ start, end, key: Date.now() })}
             onAnalyze={handleAnalyze}
             onRun={handleRun}
             running={running}

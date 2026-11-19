@@ -6,7 +6,7 @@ export async function readRunInput(request: Request) {
     throw new RequestError("Send an application/json request.", 415);
   }
   const body = record(await readJson(request, 700 * 1024));
-  const { code, testCases = [], evidence, caseIndex = 0 } = body;
+  const { code, testCases = [], evidence, caseIndex = 0, operation } = body;
   if (typeof code !== "string" || !code.trim() || Buffer.byteLength(code) > MAX_CODE) {
     throw new RequestError("Enter nonblank C++ code of at most 32 KiB.");
   }
@@ -25,5 +25,5 @@ export async function readRunInput(request: Request) {
       return { input, expectedOutput };
     }),
   };
-  return { input, caseIndex, evidence: typeof evidence === "string" && evidence.length < 180_000 ? evidence : undefined };
+  return { input, caseIndex, operation, evidence: typeof evidence === "string" && evidence.length < 180_000 ? evidence : undefined };
 }

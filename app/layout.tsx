@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Bug Analyzer — AI-Powered C++ Code Analysis",
+  title: "AI Bug Analyser — C++ Debugging Workspace",
   description:
     "Paste your C++ code and let AI analyze potential bugs, memory leaks, undefined behavior, and security vulnerabilities in real-time.",
   keywords: ["C++", "bug analyzer", "code review", "AI", "static analysis"],

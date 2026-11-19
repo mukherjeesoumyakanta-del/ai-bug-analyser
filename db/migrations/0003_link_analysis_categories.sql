@@ -1,0 +1,2 @@
+ALTER TABLE "bug_reports" ADD COLUMN "activity_id" uuid;--> statement-breakpoint
+ALTER TABLE "bug_reports" ADD CONSTRAINT "bug_reports_activity_id_debug_activities_id_fk" FOREIGN KEY ("activity_id") REFERENCES "public"."debug_activities"("id") ON DELETE set null ON UPDATE no action;

@@ -24,7 +24,7 @@ export default function Navbar() {
             className="flex items-center justify-center w-8 h-8 rounded-lg"
             style={{
               background:
-                "linear-gradient(135deg, var(--accent-start), var(--accent-mid))",
+                "#6659c9",
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -43,10 +43,10 @@ export default function Navbar() {
           </div>
           <div>
             <h1 className="text-sm font-bold tracking-tight" style={{ color: "var(--text-primary)" }}>
-              Bug Analyzer
+              AI Bug Analyser
             </h1>
             <p className="text-xs hidden sm:block" style={{ color: "var(--text-muted)" }}>
-              AI-powered code analysis
+              C++ debugging workspace
             </p>
           </div>
         </Link>
@@ -66,7 +66,7 @@ export default function Navbar() {
                 className="text-xs font-medium hover:text-white transition-colors"
                 style={{ color: "var(--text-secondary)" }}
               >
-                &larr; Code Editor 💻
+                &larr; Editor
               </Link>
             ) : (
               <Link
@@ -74,7 +74,7 @@ export default function Navbar() {
                 className="text-xs font-medium hover:text-white transition-colors"
                 style={{ color: "var(--text-secondary)" }}
               >
-                Analytics 📊
+                Activity
               </Link>
             )}
             <span className="hidden text-xs text-white/50 lg:inline">{session.user.email}</span>

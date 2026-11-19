@@ -5,17 +5,17 @@
    ────────────────────────────────────────────── */
 
 :root {
-  --bg-primary: #06060e;
-  --bg-secondary: #0d0f1a;
-  --bg-surface: rgba(15, 18, 35, 0.65);
+  --bg-primary: #0b0d12;
+  --bg-secondary: #10131a;
+  --bg-surface: rgba(20, 23, 32, 0.92);
   --bg-surface-hover: rgba(20, 24, 48, 0.75);
 
-  --border-glass: rgba(255, 255, 255, 0.06);
+  --border-glass: rgba(255, 255, 255, 0.11);
   --border-glow: rgba(129, 100, 255, 0.2);
 
   --text-primary: #e8e6f0;
-  --text-secondary: #8b8a9e;
-  --text-muted: #55546a;
+  --text-secondary: #a1a8b8;
+  --text-muted: #858d9e;
 
   --accent-start: #7c5cfc;
   --accent-mid: #a855f7;
@@ -72,7 +72,7 @@ html {
 body {
   min-height: 100%;
   margin: 0;
-  background: linear-gradient(165deg, var(--bg-primary) 0%, var(--bg-secondary) 50%, #0a0c1a 100%);
+  background: var(--bg-primary);
   color: var(--text-primary);
   font-family: var(--font-ui);
   overflow-x: clip;
@@ -108,14 +108,10 @@ body {
 
 .glass-panel {
   background: var(--bg-surface);
-  backdrop-filter: blur(24px) saturate(1.4);
-  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--border-glass);
-  border-radius: 16px;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.03),
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
 }
 
 .glass-panel-glow {
@@ -123,23 +119,7 @@ body {
 }
 
 .glass-panel-glow::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 17px;
-  padding: 1px;
-  background: linear-gradient(
-    135deg,
-    rgba(124, 92, 252, 0.15) 0%,
-    transparent 50%,
-    rgba(99, 102, 241, 0.1) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
+  display: none;
 }
 
 /* ── Gradient Button ───────────────────────── */
@@ -156,10 +136,10 @@ body {
   font-weight: 600;
   letter-spacing: 0.02em;
   color: #fff;
-  background: linear-gradient(135deg, var(--accent-start) 0%, var(--accent-mid) 50%, var(--accent-end) 100%);
+  background: #6659c9;
   background-size: 200% 200%;
   border: none;
-  border-radius: 12px;
+  border-radius: 7px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
@@ -176,15 +156,11 @@ body {
 }
 
 .btn-gradient:hover {
-  transform: translateY(-2px);
-  box-shadow:
-    0 0 20px var(--glow-accent),
-    0 8px 24px rgba(124, 92, 252, 0.25);
-  background-position: 100% 100%;
+  background: #7669da;
 }
 
 .btn-gradient:hover::before {
-  opacity: 1;
+  opacity: 0;
 }
 
 .btn-gradient:active {
@@ -305,23 +281,23 @@ body {
 /* ── Animation Utility Classes ─────────────── */
 
 .animate-fade-in {
-  animation: fade-in 0.6s ease-out both;
+  animation: none;
 }
 
 .animate-slide-up {
-  animation: slide-up 0.5s ease-out both;
+  animation: none;
 }
 
 .animate-slide-up-delay-1 {
-  animation: slide-up 0.5s ease-out 0.1s both;
+  animation: none;
 }
 
 .animate-slide-up-delay-2 {
-  animation: slide-up 0.5s ease-out 0.2s both;
+  animation: none;
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow 3s ease-in-out infinite;
+  animation: none;
 }
 
 /* ── Spinner ───────────────────────────────── */
@@ -364,4 +340,44 @@ body {
   .btn-gradient {
     padding-inline: 12px;
   }
+}
+
+.debug-workspace .glass-panel {
+  background: #10131c;
+  border-color: #292d3b;
+  border-radius: 10px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+.debug-workspace .btn-gradient {
+  background: #6654ce;
+  border-radius: 6px;
+  padding: 9px 14px;
+  box-shadow: none;
+}
+.debug-workspace .btn-gradient::before { display: none; }
+.room-button {
+  border: 1px solid #3b4154;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #e2e8f0;
+  background: #1b2030;
+  cursor: pointer;
+}
+.room-button:hover { background: #272e42; }
+.room-button:disabled { opacity: .45; cursor: wait; }
+
+.finding-source-line {
+  background: rgba(167, 139, 250, .16);
+  border-left: 2px solid #a78bfa;
+}
+
+button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible {
+  outline: 2px solid #a5a0f5;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }

@@ -8,7 +8,7 @@ import type { editor } from "monaco-editor";
 import type { Awareness } from "y-protocols/awareness";
 import CodeEditor from "@/components/CodeEditor";
 
-export default function SharedEditor() {
+export default function SharedEditor({ focusLine }: { focusLine?: { start: number; end: number; key: number } }) {
   const room = useRoom();
   const provider = getYjsProviderForRoom(room);
   const [instance, setInstance] = useState<editor.IStandaloneCodeEditor>();
@@ -39,7 +39,7 @@ export default function SharedEditor() {
     };
   }, [instance, provider]);
 
-  return <CodeEditor readOnly={!synced || !bound} onMount={(instance, monaco) => {
+  return <CodeEditor focusLine={focusLine} readOnly={!synced || !bound} onMount={(instance, monaco) => {
     // Yjs and Monaco must calculate offsets using the same newline on every OS.
     instance.getModel()?.setEOL(monaco.editor.EndOfLineSequence.LF);
     setInstance(instance);

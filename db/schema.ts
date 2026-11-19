@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, primaryKey, serial, integer, uuid, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, primaryKey, serial, integer, uuid, pgEnum, jsonb, index, type AnyPgColumn } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "next-auth/adapters";
 
 export const users = pgTable("user", {
@@ -58,6 +58,7 @@ export const bugReports = pgTable("bug_reports", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   codeSnippet: text("code_snippet").notNull(),
+  activityId: uuid("activity_id").references((): AnyPgColumn => activities.id, { onDelete: "set null" }),
   bugType: text("bug_type").notNull(),
   severity: text("severity").notNull(),
   createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
@@ -79,3 +80,24 @@ export const roomRequests = pgTable("room_requests", {
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (request) => [primaryKey({ columns: [request.roomId, request.userId] })]);
+
+export const activityKind = pgEnum("activity_kind", ["execution", "analysis", "report"]);
+export const activityStatus = pgEnum("activity_status", ["running", "complete", "error"]);
+
+export const activities = pgTable("debug_activities", {
+  id: uuid("id").primaryKey(),
+  roomId: uuid("room_id").references(() => debugRooms.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  kind: activityKind("kind").notNull(),
+  status: activityStatus("status").default("running").notNull(),
+  code: text("code").notNull(),
+  testCases: jsonb("test_cases").$type<import("../lib/execution-types").TestCase[]>().notNull(),
+  caseIndex: integer("case_index").default(0).notNull(),
+  result: jsonb("result").$type<import("../lib/execution-types").ExecutionResult>(),
+  content: text("content"),
+  analysis: jsonb("analysis").$type<import("../lib/analysis-report").AnalysisReport>(),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+}, (activity) => [index("activity_room_created_idx").on(activity.roomId, activity.createdAt),
+  index("activity_user_idx").on(activity.userId)]);

@@ -4,6 +4,8 @@ import { useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ExecutionOutput from "./ExecutionOutput";
+import AnalysisReportView from "./AnalysisReport";
+import type { AnalysisReport } from "@/lib/analysis-report";
 import type { CaseResults, TestCase } from "@/lib/execution-types";
 
 type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
@@ -11,6 +13,8 @@ type AnalysisStatus = "idle" | "analyzing" | "complete" | "error";
 interface OutputPanelProps {
   displayedText: string;
   status: AnalysisStatus;
+  report?: AnalysisReport;
+  onSelectLine?: (start: number, end: number) => void;
   onAnalyze: () => void;
   onRun: () => void;
   running: boolean;
@@ -25,7 +29,7 @@ interface OutputPanelProps {
 export default function OutputPanel({
   displayedText,
   status,
-  onAnalyze, onRun, running, runError, results, stale, testCases, caseIndex, onSelectCase,
+  report, onSelectLine, onAnalyze, onRun, running, runError, results, stale, testCases, caseIndex, onSelectCase,
 }: OutputPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { status: authStatus } = useSession();
@@ -34,9 +38,9 @@ export default function OutputPanel({
   /* Auto-scroll to bottom on new text */
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = report ? 0 : scrollRef.current.scrollHeight;
     }
-  }, [displayedText]);
+  }, [displayedText, report]);
 
   const statusLabel: Record<AnalysisStatus, string> = {
     idle: "Ready",
@@ -71,7 +75,7 @@ export default function OutputPanel({
             className="text-sm font-semibold tracking-wide uppercase"
             style={{ color: "var(--text-secondary)" }}
           >
-            AI Output
+            AI Analysis
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -94,7 +98,7 @@ export default function OutputPanel({
         ref={scrollRef}
         className="custom-scrollbar min-h-0 flex-1 overflow-y-auto px-3 py-4 sm:px-5"
       >
-        {displayedText ? (
+        {report ? <AnalysisReportView report={report} onSelectLine={onSelectLine} /> : displayedText ? (
           <div
             className={`font-mono text-sm leading-relaxed whitespace-pre-wrap break-words ${
               status === "analyzing" ? "streaming-cursor" : ""
@@ -110,32 +114,12 @@ export default function OutputPanel({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center h-full gap-4 animate-fade-in">
-            {/* Placeholder icon */}
-            <div
-              className="rounded-2xl p-4"
-              style={{ background: "var(--glow-soft)" }}
-            >
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{ color: "var(--accent-start)" }}
-              >
-                <path d="M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z" />
-                <circle cx="12" cy="15" r="2" />
-              </svg>
-            </div>
+
             <p
               className="text-sm text-center max-w-[240px]"
               style={{ color: "var(--text-muted)" }}
             >
-              Click <strong>Analyze with AI</strong> to scan your C++ code for
-              potential issues.
+              {status === "analyzing" ? "Reviewing code and validating findings…" : <>Click <strong>Analyze with AI</strong> to review your C++ code.</>}
             </p>
           </div>
         )}

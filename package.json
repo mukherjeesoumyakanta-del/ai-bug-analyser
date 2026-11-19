@@ -4,10 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/check-production-schema.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/execution.test.ts",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test tests/execution.test.ts tests/report.test.ts tests/analysis-report.test.ts",
+    "test:browser:home": "node --env-file-if-exists=.env.local tests/home-analysis.browser.mjs",
+    "test:browser": "node --env-file-if-exists=.env.local tests/browser-smoke.mjs --voice",
+    "test:rooms": "tsx --test tests/rooms.integration.test.ts",
     "test:live": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file-if-exists=.env.local --test tests/jdoodle.live.test.ts"
   },
   "dependencies": {
@@ -17,6 +21,7 @@
     "@liveblocks/node": "^3.25.1",
     "@liveblocks/react": "^3.25.1",
     "@liveblocks/yjs": "^3.25.1",
+    "@livekit/components-react": "^2.9.25",
     "@monaco-editor/react": "^4.7.0",
     "bcryptjs": "^3.0.3",
     "drizzle-orm": "^0.45.2",
@@ -41,7 +46,9 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "playwright-core": "^1.65.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

@@ -6,8 +6,9 @@ import Link from "next/link";
 import { LiveblocksProvider, RoomProvider, useErrorListener, useOthers, useStatus } from "@liveblocks/react";
 import { realtimeRoom } from "@/lib/room-id";
 import Whiteboard from "./Whiteboard";
+import RoomActivityPanel from "./RoomActivityPanel";
 
-const VoiceControls = dynamic(() => import("./VoiceControls"), { ssr: false });
+const CallPanel = dynamic(() => import("./CallPanel"), { ssr: false });
 const SharedEditor = dynamic(() => import("./SharedEditor"), { ssr: false, loading: () => <p className="p-4">Loading Monaco…</p> });
 
 type WorkspaceProps = {
@@ -28,7 +29,8 @@ export default function RoomWorkspace(props: WorkspaceProps) {
 function Workspace({ id, userId, ownerId, participants, inviteCode, children }: WorkspaceProps) {
   const status = useStatus();
   const others = useOthers();
-  const [panel, setPanel] = useState<"code" | "board">("code");
+  const [focusLine, setFocusLine] = useState<{ start: number; end: number; key: number }>();
+  const [panel, setPanel] = useState<"code" | "board">("board");
   const [copyMessage, setCopyMessage] = useState("");
   const [providerError, setProviderError] = useState(false);
   useErrorListener(() => setProviderError(true));
@@ -45,7 +47,7 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
   }
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col gap-3 p-2 sm:gap-4 sm:p-4">
+    <main className="debug-workspace mx-auto flex w-full min-w-0 max-w-[1600px] flex-1 flex-col gap-3 p-2 sm:gap-4 sm:p-4">
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div><h1 className="text-xl font-semibold">Debug room {id.slice(0, 8)}</h1>
           <p role="status" className="text-sm text-slate-400">Live editing · {status}</p></div>
@@ -55,7 +57,7 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
         </div>
       </header>
       {providerError && status !== "connected" && <p role="alert" className="rounded-lg bg-red-950/60 p-3 text-sm text-red-200">Live editing could not connect. Check the server setup or reload to retry.</p>}
-      <div className="grid min-w-0 flex-1 gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid min-w-0 flex-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <section className="glass-panel flex min-h-[300px] min-w-0 flex-col overflow-hidden">
           <nav aria-label="Room workspace" className="flex gap-2 border-b border-white/10 p-2 text-sm">
             <button type="button" aria-pressed={panel === "code"} onClick={() => setPanel("code")}
@@ -65,9 +67,10 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
           </nav>
           <div hidden={panel !== "code"} className="min-w-0 flex-1">
             <h2 className="border-b border-white/10 px-3 py-2 text-sm font-medium">Shared editor · main.cpp</h2>
-            <div className="h-[clamp(280px,60dvh,820px)]"><SharedEditor /></div>
+            <div className="h-[clamp(280px,60dvh,820px)]"><SharedEditor focusLine={focusLine} /></div>
           </div>
           <section hidden={panel !== "board"}><Whiteboard /></section>
+          <RoomActivityPanel roomId={id} onSelectLine={(start, end) => { setPanel("code"); setFocusLine({ start, end, key: Date.now() }); }} />
         </section>
         <aside className="glass-panel min-w-0 space-y-4 p-4">
           <h2 className="font-semibold">Participants · {participants.length}/2</h2>
@@ -84,7 +87,7 @@ function Workspace({ id, userId, ownerId, participants, inviteCode, children }: 
             })}
           </ul>
           {inviteCode && <div className="text-xs text-slate-400"><p role="status">{copyMessage}</p><p className="mt-1 break-all">Room code {inviteCode}</p></div>}
-          <VoiceControls roomId={id} />
+          <CallPanel roomId={id} />
           {children}
         </aside>
       </div>

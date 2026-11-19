@@ -15,6 +15,27 @@
       "when": 1795024653733,
       "tag": "0001_debugging_rooms",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795027065955,
+      "tag": "0002_shared_activity_records",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795027099548,
+      "tag": "0003_link_analysis_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795028219242,
+      "tag": "0004_structured_analysis_reports",
+      "breakpoints": true
     }
   ]
 }

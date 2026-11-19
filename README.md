@@ -1,65 +1,168 @@
 # AI Bug Analyser
 
-A Next.js App Router app for running and reviewing C++ code. The home page uses Monaco and the existing dark theme. Credentials are checked with bcrypt through NextAuth; JWT sessions carry the signed-in user's ID. Drizzle reads and writes PostgreSQL. The Analytics page groups that user's saved analysis reports by bug category and displays them with Recharts.
+A C++ debugging workspace for students and pairs of developers. Run a small program, inspect its actual output, and ask Gemini for guided explanations. Two people can work on the same code and drawing board while using an audio/video call.
 
-- `/api/auth/[...nextauth]` handles NextAuth; `/api/auth/register` creates a user.
-- `/api/analyze` streams Gemini 2.5 Flash's tutoring response. Next.js `after()` runs the category extraction after streaming, and PostgreSQL saves the resulting rows in one insert. If Gemini or the database fails during extraction, the analysis can still display and the server logs the write failure.
-- `/api/execute` runs C++ through the configured hosted sandbox. It does not store execution results or run a local compiler.
-- `db/schema.ts` and `db/migrations/` define users, accounts, sessions, verification tokens, and bug reports. This feature adds no tables or migrations.
+## Features
+
+- Monaco C++ editor with manual JDoodle execution, stdin, and optional expected-output checks.
+- Structured Gemini bug reports on the home page, using signed execution evidence when available.
+- Private two-account rooms with owner-approved admission, shared Monaco/Yjs editing, remote selections, and a shared whiteboard.
+- Camera-off and microphone-off call joining, optional camera and microphone controls, participant placeholders, and collapsible video tiles.
+- Shared room execution and analysis records, fixed code/test snapshots, stale-result notices, and Markdown session reports.
+- PostgreSQL-backed analytics with code filtering, completed analysis counts, execution outcomes, and recent rooms.
+- Responsive dark interface.
+
+## Stack and architecture
+
+Next.js App Router, React, TypeScript, NextAuth credentials/JWT sessions, PostgreSQL, Drizzle, Monaco, Gemini, JDoodle, Liveblocks/Yjs, and LiveKit.
+
+```mermaid
+flowchart TD
+  Browser["Next.js UI / Monaco"] --> Auth["NextAuth credentials + JWT"]
+  Browser --> API["Protected Next.js routes"]
+  API --> DB["PostgreSQL / Drizzle"]
+  API --> JD["JDoodle execution"]
+  API --> AI["Gemini tutoring"]
+  Browser <--> LB["Liveblocks / Yjs text + strokes"]
+  API --> Tokens["Membership-checked Liveblocks + LiveKit tokens"]
+  Browser <--> LK["LiveKit microphone + camera"]
+```
+
+PostgreSQL stores account records, rooms, join requests, action snapshots, results, and bug categories. Liveblocks persists collaborative text and drawings. LiveKit transports audio/video tracks.
 
 ## Local setup
 
-1. Use Node.js 22.18 or later (the test scripts use Node's built-in TypeScript support). Run `npm ci`.
-2. Copy `.env.example` to `.env.local`. Configure `DATABASE_URL` for your PostgreSQL database, `NEXTAUTH_URL=http://localhost:3000`, and a strong random `NEXTAUTH_SECRET`. Set `GEMINI_API_KEY` for AI analysis.
-3. For a **new development database**, check the connection points to the intended database and apply the checked-in migration with `npx drizzle-kit migrate`. An already initialized database with this schema needs no change for this feature.
-4. Set `JDOODLE_CLIENT_ID` and `JDOODLE_CLIENT_SECRET` in `.env.local` from your JDoodle Compiler API dashboard. The server uses the official [JDoodle REST API](https://www.jdoodle.com/docs/api/rest) and pins [C++17, GCC 15.2.1](https://www.jdoodle.com/docs/api/languages) as `cpp17` with `versionIndex: "3"`.
-5. Run `npm run dev`, open `http://localhost:3000`, register, and sign in. Open **Test Cases** to set stdin and optionally check an expected output. Select the case to run, then click **Run Code**. Select another case to run it separately. **Analyze with AI** can use recorded results. Refresh Analytics after a completed analysis to see saved categories.
+1. Install Node.js 22.18 or newer and run `npm ci`.
+2. Copy `.env.example` to `.env.local` and fill in server variables.
+3. Point `DATABASE_URL` at your development PostgreSQL database and run `npx drizzle-kit migrate`. Existing accounts and reports are preserved by the additive migrations. A database created outside the migration workflow may need its existing schema baselined before applying migrations.
+4. Run `npm run dev` and open `http://localhost:3000`.
+5. Register two accounts in separate browser profiles. Create a room, share its invite, request access from the second account, then admit it from the owner account.
 
-The same variables are server-only Vercel project settings if you deploy; set `NEXTAUTH_URL` to the applicable deployment origin. The execution and analysis routes declare 35-second and 60-second function durations. Google fonts are downloaded at build time, and Monaco loads its assets through the existing editor integration.
+### Environment
 
-## Execution flow
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection |
+| `NEXTAUTH_URL` | App origin, such as `http://localhost:3000` |
+| `NEXTAUTH_SECRET` | Random session and execution-evidence signing secret |
+| `GEMINI_API_KEY` | Google AI Studio key for tutoring and category extraction |
+| `JDOODLE_CLIENT_ID` / `JDOODLE_CLIENT_SECRET` | Compiler API credentials |
+| `LIVEBLOCKS_SECRET_KEY` | Private room provisioning and scoped authorization |
+| `LIVEKIT_URL` | LiveKit WebSocket URL |
+| `LIVEKIT_API_KEY` / `LIVEKIT_API_SECRET` | Server-side call token signing |
 
-```mermaid
-flowchart LR
-    A["Monaco and test cases"] --> B["POST /api/execute"]
-    B --> C["Check session, inputs and run limit"]
-    C --> D["JDoodle: one REST call for the selected case"]
-    D --> F["Read program outcome, compare output, sign evidence"]
-    F --> G["Show output, errors and verdicts"]
-    G --> H["POST /api/analyze with matching evidence"]
-    H --> I["Verify evidence and stream Gemini review"]
-    I --> J["Extract categories and save analytics"]
-```
+The frontend receives scoped participant tokens. Keep provider credentials in the server environment.
 
-The route accepts `{ code, testCases: [{ input, expectedOutput }], caseIndex, evidence }`. A run with no cases uses empty stdin. The server sends source and stdin to JDoodle in one request. There are no automatic runs, polls, or retries. JDoodle's API status describes the request. The app uses its program flags and timeout diagnostic to classify the result. If JDoodle omits the program outcome, the result is unchecked.
+## Authentication and room admission
 
-The comparison uses JDoodle's full returned output before shortening the display. It normalizes CRLF to LF and preserves all other characters. JDoodle can combine stdout and stderr and can omit the final newline, so enter the expected output as JDoodle returns it. A checked blank expectation requires empty returned output. A missing expectation remains unchecked. Editing code or tests hides old results. Signed results are bound to the user and exact code and tests for 30 minutes. Gemini receives excerpts of the cases already run.
+NextAuth verifies a bcrypt password against PostgreSQL and issues a JWT carrying the user's ID. A room has an unpredictable UUID, a separate unpredictable invitation code, an owner, and one optional admitted account. The invitation creates a join request. It grants no editor or call permission until the owner admits that account.
 
-The [Free API plan](https://www.jdoodle.com/docs/api/credits) has 20 daily credits. A click runs one case and can use one credit, including a compile or runtime failure. Four custom cases, 32 KiB of source, 8 KiB per input or expectation, and 4,096 displayed output characters are allowed. The server allows one in-flight run per user per process, with at least five seconds between starts. JDoodle enforces its daily quota and sandbox limits. A 25-second wait limit on this app's provider request can expire before the provider returns. A provider timeout and a program timeout are shown separately.
+Admission uses an atomic conditional database update, so concurrent attempts cannot fill the second slot twice. Multiple tabs use the same account ID. Protected room operations recheck the authenticated account against the owner/admitted participant. Liveblocks access tokens are scoped to that room. LiveKit grants join/subscribe and only microphone/camera publishing for the same account identity and room name, with a two-participant room configuration. A second call connection from the same account can replace its earlier connection.
 
-## Collaborative debugging rooms
+## Main routes
 
-Set `LIVEBLOCKS_SECRET_KEY` to a secret key from your Liveblocks project. Keep it in the server environment. Run `npx drizzle-kit migrate` after configuring PostgreSQL to add the room and admission tables.
+| Route | Behavior |
+| --- | --- |
+| `/api/auth/[...nextauth]` | Sign-in and session |
+| `POST /api/auth/register` | Validated account creation |
+| `POST /api/execute` | Authenticated single-case JDoodle run and durable outcome |
+| `POST /api/analyze` | Generate a validated bug report and persist it |
+| `POST /api/liveblocks-auth` | Room-scoped collaboration token |
+| `POST /api/voice-token` | Room-scoped microphone/camera token |
+| `GET /api/rooms/[id]/activities` | Authorized room history |
+| `POST /api/rooms/[id]/activities` | Reserve and perform a shared execution, analysis, or report |
+| `/collaborate` | Create rooms and request admission |
+| `/analytics` | Stored activity counts and code-specific categories |
 
-Sign in and open **Debug Together**. Create a room and share the invite link or code. The second account requests access, then the owner presses **Admit**. The room has a single participant slot beside the owner. Multiple tabs signed in as the same account count once. Exit returns to the landing page and preserves editor state for the next visit.
+Room creation and admission use authenticated Next.js server actions.
 
-The server provisions a private Liveblocks room and gives authenticated PostgreSQL members an access token scoped to that exact room. The existing Monaco editor binds to a Yjs shared document when Liveblocks finishes synchronizing. PostgreSQL stores room metadata and requests. Liveblocks stores collaborative text and handles cursor presence.
+## Execution and shared results
 
-The **Whiteboard** uses the same Liveblocks Yjs document as the editor. The app previews the current stroke locally and syncs it on pointer release. Strokes store normalized coordinates, so resizing preserves placement. The eraser is a shared stroke that removes pixels where it passes. **Clear board** asks for confirmation and clears committed strokes for both participants. A stroke still in progress on the other device can appear after a clear. The board supports up to 500 strokes, with up to 512 sampled points per stroke.
+JDoodle is called once per selected run, only after a click. The server pins `cpp17` and `versionIndex: "3"`, documented as GCC 15.2.1 in the [JDoodle language table](https://www.jdoodle.com/docs/api/languages). The [Free API tier](https://www.jdoodle.com/docs/api/credits) has 20 daily credits. Failed program runs can also consume a credit. The app performs no automatic execution retries.
 
-For **Voice**, set `LIVEKIT_URL` to your LiveKit project's WebSocket URL and set `LIVEKIT_API_KEY` and `LIVEKIT_API_SECRET` on the server. For an official local LiveKit server, a loopback WebSocket URL is allowed. Use HTTPS for the app outside localhost so browsers can grant microphone access. In a room, click **Join voice**, then allow microphone access. If permission is denied, you can still listen. If the browser blocks automatic playback, click **Play audio**. Leaving voice or the room releases the microphone. LiveKit permits one voice connection per account in a room, so joining voice from another tab can replace the first connection.
+A request's HTTP/API status differs from the program outcome. The adapter inspects `isCompiled`, `isExecutionSuccess`, and the observed JDoodle timeout diagnostic. Missing program outcome fields remain unknown.
 
-The token endpoint matches the room owner or admitted participant in PostgreSQL and issues a five-minute token for that exact LiveKit room under the account's ID. The token permits audio subscription and microphone publication. The LiveKit room configuration also caps the session at two connections.
+Comparison normalizes CRLF to LF and preserves all other returned characters. JDoodle may combine stderr with stdout and omit the final newline. A checked blank expectation requires empty returned output. The comparison uses full returned output before display truncation.
 
-The Analytics code filter uses the exact saved C++ source and excludes the clean-code marker from bug counts.
+Source is capped at 32 KiB, inputs/expectations at 8 KiB, and displayed output at 4,096 characters. Home supports four cases run individually. A room action runs one submitted case and stores its input/expectation alongside the result. A 25-second provider wait limit does not terminate a remote job.
+
+Each room action has a UUID. A PostgreSQL transaction locks the room row, rejects a concurrent active action, and reserves a durable activity before contacting a provider. Reusing a request UUID returns the original row. Different UUIDs are rate limited. This works across application instances. Unknown/interrupted actions are marked after two minutes on history refresh and are never executed automatically.
+
+Room history refreshes every 2.5 seconds. Both users see the same ID, result, input, and source. Code edited during a run stays editable, and results display a stale-snapshot warning. The browser can lose a response while the server completes the action, so check history before intentionally submitting another run.
+
+## Realtime editor, board, and calls
+
+`RoomWorkspace` owns a Liveblocks room. `SharedEditor` reuses `CodeEditor`, binds Monaco with the official Yjs integration, and waits for synchronization before editing. The provider is managed by Liveblocks and the Monaco binding is detached on unmount.
+
+The whiteboard uses a Yjs array of normalized strokes in the same document. It previews locally, samples pointer movement, and publishes a completed stroke on release. Other users see completed strokes. Erasing is a shared erase stroke. Clear asks for confirmation. A remote stroke still being drawn can appear after clear. The board allows 500 strokes and 512 points per stroke.
+
+`CallPanel → LiveKitRoom → CallControls` uses the official LiveKit React components. `VideoTrack` displays subscribed camera publications, `TrackToggle` manages devices, and `RoomAudioRenderer` attaches remote audio. Users join with both devices off. Permission failures leave listening and other features available. Leaving/unmounting disconnects the room and releases media. Video tiles collapse on phones while controls remain accessible. Camera and microphone require HTTPS outside localhost.
+
+## Gemini and persistence
+
+The home route generates a structured C++ tutoring report. It validates signed execution evidence against the user and exact input. The room route uses stored execution results matching the code and tests as server evidence, then saves a single shared completed analysis. Viewing or polling a room never calls Gemini.
+
+Gemini returns JSON with critical/high/medium/low findings. The server validates fields and source ranges and only enables line navigation when the quoted source matches the actual lines. Language, severity counts, code snippets and execution observations are computed from validated source and server evidence. The full report appears after generation and validation; the UI shows a loading state while waiting. It does not stream partial bug cards.
+
+The report, Markdown representation and its validated bug categories are persisted in one transaction. There is one Gemini request per analysis, and no second AI category-extraction request. Analytics counts completed analysis records rather than treating every bug row as a separate analysis. Legacy category-only rows remain visible but cannot provide a trustworthy historical analysis count.
+
+The category chart counts recorded occurrences across analyses, excluding the clean-code marker. Program completion metrics are distinct from test pass/fail verdicts.
+
+## Session reports
+
+Generate a report from the final source and up to 50 recent room records. The first available action supplies the initial recorded source, not the first keystroke. Reports include observed outcomes, AI hypotheses when recorded, source snapshots, and test inputs/expectations. Missing evidence is labeled. A changed source is not automatically called a fix. Reports use deterministic Markdown assembly and consume no AI/compilation credits. Copy or download the Markdown from the result panel.
 
 ## Verification
 
-```bash
+```sh
 npm run lint
 npx tsc --noEmit
-npm run build
 npm test
+npm run build
 ```
 
-`npm test` uses mocked JDoodle responses and consumes zero credits. Run `npm run test:live` explicitly for one real C++ stdin/output check, which can use one credit. It skips if the JDoodle credentials are missing. Registration, Gemini streaming, and analytics need a configured database and Gemini key for an end-to-end smoke test.
+`npm test` covers execution validation, comparison, JDoodle normalization, evidence binding, room IDs, and report honesty using local fixtures.
+
+`TEST_DATABASE_URL=... npm run test:rooms` uses a migrated test PostgreSQL database to verify atomic room admission, membership, cross-room isolation, concurrent request idempotency, and room-action exclusion. The test creates and removes only its own generated accounts and cascading records. It skips when the test URL is absent. Use your shell's environment-variable syntax.
+
+`npm run test:live` is an explicit one-credit JDoodle test. It is separate from the default suite.
+
+Run `npm run test:browser` with `TEST_DATABASE_URL`, a running local app, configured providers, and Chrome installed. `ROOM_TEST_ORIGIN` selects the local test app and `CHROME_PATH` overrides the browser executable. This explicit suite creates separate local test accounts and consumes execution/Gemini credits. It covers live editing, drawing, video/audio, shared execution, reports, analysis persistence, and line navigation.
+
+Use `npm run test:browser -- --collaboration-only` to check collaboration and media without compiler or Gemini calls. `npm run test:browser:home` separately checks real home-page compilation and analysis and consumes one compiler credit.
+
+### Two-browser demonstration
+
+1. Sign in as two accounts, create a room, request and admit the second account.
+2. Edit from both sides simultaneously, reload one side, and check convergence.
+3. Draw and erase from both accounts, resize, reload, then clear.
+4. Join the call with both devices off. Enable microphones and cameras, switch either off, leave, and rejoin.
+5. Deny device permission and check the error plus continued listening/editing.
+6. Attempt the room page, action API, and token APIs as a third account and confirm rejection.
+7. Run a small C++ program. Check shared IDs/output, edit its source, and check the stale warning.
+8. Analyze the code with a configured Gemini key. Check its stored result in both browsers and Analytics.
+9. Generate, copy, and download a Markdown report.
+
+Browser automation with separate registered accounts and simulated devices was used during development. Physical device and human audio/video quality testing require two real devices. The automated browser suite uses simulated capture devices with real provider transport.
+
+## Deployment to Vercel
+
+1. Configure the server variables above in the Vercel project's Production environment. Set `NEXTAUTH_URL` to its production origin.
+2. Back up the production database and apply the additive migrations with `npx drizzle-kit migrate` using the production connection. Check migration history first if the initial schema was created manually. Never reset existing tables.
+3. Push the tested branch, review its preview, and merge it into the configured production branch.
+The production build checks that the room/activity migrations exist and fails before replacing the previous deployment when they are missing.
+
+4. Verify registration, authentication, analytics, room authorization, and provider connectivity in the resulting deployment.
+
+A successful frontend build does not verify production database migrations, provider credentials, or media connectivity. Liveblocks/LiveKit project keys must belong to the intended project, and the LiveKit URL must match its API key.
+
+## Technical decisions and limits
+
+- A room row with one participant slot makes the two-account rule easy to inspect and enforce atomically.
+- PostgreSQL row locks and durable request IDs coordinate provider work without another backend.
+- Yjs handles concurrent edits. PostgreSQL stores deliberate snapshots instead of keystrokes.
+- LiveKit React components handle tracks and device state with official cleanup behavior.
+- Results are bounded, and source remains plaintext for debugging. Treat rooms and invitation codes as sensitive.
+- Tokens expire, but a connected provider session may remain live until disconnected. Membership removal/room closing is not exposed in this version.
+- Provider failures, missing credentials, model mistakes, and output truncation are visible limitations.
+- Quotas must also be configured with the providers. A room cooldown does not impose a global per-day product budget.

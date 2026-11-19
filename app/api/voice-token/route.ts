@@ -10,11 +10,11 @@ export async function POST(request: Request) {
     const { roomId } = record(await readJson(request, 2048));
     const { id, user } = await requireRoomMember(roomId);
     const { LIVEKIT_URL: url, LIVEKIT_API_KEY: key, LIVEKIT_API_SECRET: secret } = process.env;
-    if (!url || !key || !secret) throw new RequestError("Voice service is not configured.", 503);
+    if (!url || !key || !secret) throw new RequestError("Call service is not configured.", 503);
     const endpoint = new URL(url);
     const local = ["localhost", "127.0.0.1", "[::1]"].includes(endpoint.hostname);
     if (endpoint.protocol !== "wss:" && !(local && endpoint.protocol === "ws:")) {
-      throw new RequestError("The voice service URL must use secure WebSockets.", 503);
+      throw new RequestError("The call service URL must use secure WebSockets.", 503);
     }
 
     const token = new AccessToken(key, secret, {
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       room: realtimeRoom(id),
       roomJoin: true,
       canPublish: true,
-      canPublishSources: [TrackSource.MICROPHONE],
+      canPublishSources: [TrackSource.MICROPHONE, TrackSource.CAMERA],
       canSubscribe: true,
       canPublishData: false,
       canUpdateOwnMetadata: false,
@@ -34,6 +34,6 @@ export async function POST(request: Request) {
       headers: { "Cache-Control": "no-store" },
     });
   } catch (error) {
-    return roomApiError(error, "Could not start the voice connection.");
+    return roomApiError(error, "Could not start the call connection.");
   }
 }
