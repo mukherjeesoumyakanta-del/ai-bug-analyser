@@ -17,6 +17,9 @@ export async function createRoom(): Promise<ActionState> {
   try {
     id = await createDebugRoom(userId);
   } catch (error) {
+    if (error instanceof RequestError && error.status === 401) {
+      redirect("/login?callbackUrl=/collaborate&reason=session-expired");
+    }
     return { error: error instanceof RequestError ? error.message : "Could not create a room. Check the database setup or try again." };
   }
   redirect(`/collaborate/${id}`);
@@ -31,7 +34,10 @@ export async function requestRoom(_: ActionState, data: FormData): Promise<Actio
   let result: Awaited<ReturnType<typeof requestAdmission>>;
   try {
     result = await requestAdmission(code, userId);
-  } catch {
+  } catch (error) {
+    if (error instanceof RequestError && error.status === 401) {
+      redirect(`/login?callbackUrl=${encodeURIComponent(`/collaborate?invite=${code}`)}&reason=session-expired`);
+    }
     return { error: "Could not request access. Try again." };
   }
   if (result.error !== undefined) return { error: result.error };

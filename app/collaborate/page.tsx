@@ -1,15 +1,19 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import Navbar from "@/components/Navbar";
 import { authOptions } from "@/lib/auth";
 import { roomId } from "@/lib/room-id";
-import { getMyRooms } from "@/lib/rooms";
+import { getMyRooms, hasRoomAccount } from "@/lib/rooms";
 import { RoomForms } from "./RoomForms";
 
 export default async function CollaboratePage({ searchParams }: { searchParams: Promise<{ invite?: string }> }) {
   const invite = roomId((await searchParams).invite) ?? "";
   const userId = (await getServerSession(authOptions))?.user?.id;
   const callbackUrl = invite ? `/collaborate?invite=${invite}` : "/collaborate";
+  if (userId && !await hasRoomAccount(userId)) {
+    redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}&reason=session-expired`);
+  }
   const rooms = userId ? await getMyRooms(userId).catch(() => null) : [];
 
   return (

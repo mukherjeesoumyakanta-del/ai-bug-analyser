@@ -55,6 +55,12 @@ function LoginForm() {
         </div>
       )}
 
+      {searchParams.get("reason") === "session-expired" && (
+        <p role="status" className="text-sm text-amber-200">
+          Your previous session is no longer valid. Sign in again, or register if you do not have an account here.
+        </p>
+      )}
+
       {error && (
         <div className="p-3 rounded text-sm text-center" style={{ background: "rgba(255, 95, 87, 0.1)", color: "#ff5f57", border: "1px solid rgba(255, 95, 87, 0.2)" }}>
           {error}

@@ -15,7 +15,19 @@ export function isMember(room: Awaited<ReturnType<typeof findRoom>>, userId: str
   return room?.status === "active" && (room.ownerId === userId || room.participantId === userId);
 }
 
+export async function hasRoomAccount(userId: string) {
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId)).limit(1);
+  return Boolean(user);
+}
+
+async function requireRoomAccount(userId: string) {
+  if (!await hasRoomAccount(userId)) {
+    throw new RequestError("Your session has expired. Please sign in again.", 401);
+  }
+}
+
 export async function createDebugRoom(ownerId: string) {
+  await requireRoomAccount(ownerId);
   const secret = process.env.LIVEBLOCKS_SECRET_KEY;
   if (!secret) throw new RequestError("Set LIVEBLOCKS_SECRET_KEY to create a room.", 503);
 
@@ -27,11 +39,17 @@ export async function createDebugRoom(ownerId: string) {
   } catch {
     throw new RequestError("Liveblocks could not create the room. Check its server configuration.", 503);
   }
-  await db.insert(debugRooms).values({ id, inviteCode: randomUUID(), ownerId });
+  try {
+    await db.insert(debugRooms).values({ id, inviteCode: randomUUID(), ownerId });
+  } catch (error) {
+    await liveblocks.deleteRoom(realtimeRoom(id)).catch(() => undefined);
+    throw error;
+  }
   return id;
 }
 
 export async function requestAdmission(inviteCode: string, userId: string) {
+  await requireRoomAccount(userId);
   return db.transaction(async (tx) => {
     const [room] = await tx.select().from(debugRooms).where(eq(debugRooms.inviteCode, inviteCode)).for("update");
     if (!room || room.status !== "active") return { error: "This invitation is unavailable." };

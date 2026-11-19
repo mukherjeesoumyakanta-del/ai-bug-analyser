@@ -8,12 +8,17 @@ test("PostgreSQL room admission, isolation, and action idempotency", { skip: !te
   const { db } = await import("../db/index");
   const { users, debugRooms, activities, roomRequests } = await import("../db/schema");
   const { eq, inArray } = await import("drizzle-orm");
-  const { isMember, admitParticipant } = await import("../lib/rooms");
+  const { isMember, admitParticipant, createDebugRoom, requestAdmission, hasRoomAccount } = await import("../lib/rooms");
   const { reserveActivity } = await import("../lib/room-activities");
   const accounts = [randomUUID(), randomUUID(), randomUUID()];
   const id = randomUUID();
   try {
+    const staleUser = randomUUID();
+    assert.equal(await hasRoomAccount(staleUser), false);
+    await assert.rejects(createDebugRoom(staleUser), /session has expired/);
+    await assert.rejects(requestAdmission(randomUUID(), staleUser), /session has expired/);
     await db.insert(users).values(accounts.map((id) => ({ id, email: id + "@test.invalid" })));
+    assert.equal(await hasRoomAccount(accounts[0]), true);
     await db.insert(debugRooms).values({ id, inviteCode: randomUUID(), ownerId: accounts[0] });
     await db.insert(roomRequests).values(accounts.slice(1).map((userId) => ({ roomId: id, userId })));
     const admitted = await Promise.all(accounts.slice(1).map((user) => admitParticipant(id, accounts[0], user)));
